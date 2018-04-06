@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <dimen name="launchscreens_light_logo_bottom">100.0dip</dimen>
+    <dimen name="launchscreens_light_logo_left">-4.0dip</dimen>
+    <dimen name="launchscreens_product_logo_bottom">60.0dip</dimen>
+</resources>
