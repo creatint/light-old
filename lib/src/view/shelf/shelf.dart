@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:light/src/service/book_service.dart';
 import 'package:light/src/model/book.dart';
@@ -14,12 +15,14 @@ class Shelf extends StatefulWidget {
   Shelf(
       {@required Key key,
       @required this.useLightTheme,
+      @required this.prefs,
       @required this.onThemeChanged,
       @required this.showReadProgress})
       : super(key: key);
   final bool useLightTheme;
-  final ValueChanged<bool> onThemeChanged;
+  final SharedPreferences prefs;
   final bool showReadProgress;
+  final ValueChanged<bool> onThemeChanged;
 
   @override
   _ShelfState createState() => new _ShelfState();
@@ -57,6 +60,7 @@ class _ShelfState extends State<Shelf> {
         new CustomPageRoute(
             builder: (context) => new Reader(
                   book: book,
+                  prefs: widget.prefs,
                 )));
   }
 
@@ -68,8 +72,9 @@ class _ShelfState extends State<Shelf> {
             .push(new CustomPageRoute(
                 builder: (BuildContext context) => new ImportBook(
                       key: new Key('start'),
+                      prefs: widget.prefs,
                       isRoot: true,
-                  path: '/storage/emulated/0/DuoKan/Downloads/MiCloudBooks',
+//                      path: '/storage/emulated/0/DuoKan/Downloads/MiCloudBooks',
 //                  path: '/storage/emulated/0/DuoKan',
                     )))
             .then((_) {
@@ -102,7 +107,6 @@ class _ShelfState extends State<Shelf> {
   }
 
   Widget buildBody(BuildContext context) {
-    SliverGridDelegateWithMaxCrossAxisExtent a = null;
     return new Stack(
       children: <Widget>[
         new Offstage(

@@ -165,7 +165,7 @@ class TiebaState extends State<Tieba> {
     print(topic);
     if (!inSelect) {
       setState(() {
-        selectedTopics.add(topic); //TODO:去重
+        selectedTopics.add(topic);
         inSelect = true;
       });
     }

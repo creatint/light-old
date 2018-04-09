@@ -3,13 +3,15 @@ import 'dart:math';
 import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
-import 'package:epub/epub.dart';
+import 'package:flutter/material.dart';
 
+import 'package:epub/epub.dart';
 import 'package:light/src/service/db.dart';
 import 'package:light/src/model/book.dart';
 import 'package:light/src/service/mock_book.dart';
 import 'package:light/src/parts/selected_list_model.dart';
 import 'package:light/src/service/file_service.dart';
+import 'package:light/src/model/read_mode.dart';
 
 class BookService {
   final String name;
@@ -32,7 +34,6 @@ class BookService {
       throw new Exception('db is null');
     }
     List<Map> list = await db.query('book');
-    print(list);
     return list.map((Map map) => new Book.fromMap(map: map)).toList();
   }
 
@@ -75,22 +76,147 @@ class BookService {
     list.forEach((entity) {
       books.add(new Book.fromEntity(entity: entity));
     });
-//    print(books);
     return createBooks(books);
+  }
+
+  List<ReadMode> getReadModes() {
+    List<ReadMode> list;
+//    List<Map> res = await db.query('read_mode');
+//    res.forEach((Map map) {
+//      list.add(new ReadMode.fromMap(map));
+//    });
+    list = <ReadMode>[
+      //纯色
+      new ReadMode(
+          id: 0,
+          type: ReadModeType.color,
+          fontColor: const Color(0xff424142),
+          backgroundColor: const Color(0xffffff)),
+      new ReadMode(
+        id: 1,
+        type: ReadModeType.color,
+        fontColor: const Color(0xff424142),
+        backgroundColor: const Color(0xfff1ece1),
+      ),
+      new ReadMode(
+        id: 2,
+        type: ReadModeType.color,
+        fontColor: const Color(0xff424142),
+        backgroundColor: const Color(0xffe5d7bd),
+      ),
+      new ReadMode(
+          id: 3,
+          type: ReadModeType.color,
+          fontColor: const Color(0xff424142),
+          backgroundColor: const Color(0xffdcd3c4)),
+      new ReadMode(
+          id: 4,
+          type: ReadModeType.color,
+          fontColor: const Color(0xff424142),
+          backgroundColor: const Color(0xffa4a4a4)),
+      new ReadMode(
+          id: 5,
+          type: ReadModeType.color,
+          fontColor: const Color(0xff3a3931),
+          backgroundColor: const Color(0xff0e9cb)),
+      new ReadMode(
+          id: 6,
+          type: ReadModeType.color,
+          fontColor: const Color(0xff313d31),
+          backgroundColor: const Color(0xffc8edcc)),
+      new ReadMode(
+          id: 7,
+          type: ReadModeType.color,
+          fontColor: const Color(0xffadbab5),
+          backgroundColor: const Color(0xff35514b)),
+      new ReadMode(
+          id: 8,
+          type: ReadModeType.color,
+          fontColor: const Color(0xffadaeb5),
+          backgroundColor: const Color(0xff283448)),
+      new ReadMode(
+          id: 9,
+          type: ReadModeType.color,
+          fontColor: const Color(0xff5b5b5b),
+          backgroundColor: const Color(0xff000000)),
+
+      //纹理图片
+      new ReadMode(
+          id: 10,
+          type: ReadModeType.texture,
+          fontColor: const Color(0xff423d3a),
+          image_uri: 'assets/background/bg1.png'),
+      new ReadMode(
+          id: 11,
+          type: ReadModeType.texture,
+          fontColor: const Color(0xff3a3931),
+          image_uri: 'assets/background/bg2.png'),
+      new ReadMode(
+          id: 12,
+          type: ReadModeType.texture,
+          fontColor: const Color(0xff3a3931),
+          image_uri: 'assets/background/bg3.png'),
+      new ReadMode(
+          id: 13,
+          type: ReadModeType.texture,
+          fontColor: const Color(0xff3a3129),
+          image_uri: 'assets/background/bg4.png'),
+      new ReadMode(
+          id: 14,
+          type: ReadModeType.texture,
+          fontColor: const Color(0xffb5b6b5),
+          image_uri: 'assets/background/bg5.png'),
+
+      //背景图片
+      new ReadMode(
+          id: 15,
+          type: ReadModeType.image,
+          fontColor: const Color(0xff1b310e),
+          image_uri: 'assets/background/bg6.png'),
+      new ReadMode(
+          id: 16,
+          type: ReadModeType.image,
+          fontColor: const Color(0xff3a3129),
+          image_uri: 'assets/background/bg7.jpg'),
+      new ReadMode(
+          id: 17,
+          type: ReadModeType.image,
+          fontColor: const Color(0xff5e432e),
+          image_uri: 'assets/background/bg8.png'),
+      new ReadMode(
+          id: 18,
+          type: ReadModeType.image,
+          fontColor: const Color(0xff801634),
+          image_uri: 'assets/background/bg9.png'),
+      new ReadMode(
+          id: 19,
+          type: ReadModeType.image,
+          fontColor: const Color(0xffd6a68d),
+          image_uri: 'assets/background/bg10.png'),
+      new ReadMode(
+          id: 20,
+          type: ReadModeType.image,
+          fontColor: const Color(0xff5e432e),
+          image_uri: 'assets/background/bg11.png'),
+    ];
+    return list;
   }
 }
 
 class BookDecoder {
-  BookDecoder({@required this.book}) : file = new File(book.uri) {
-    maxPN = file.lengthSync()~/byteSize;
-  }
+  BookDecoder({@required this.book, @required int sectionSize})
+      : file = new File(book.uri),
+        _sectionSize = sectionSize;
 
   final Book book;
   RandomAccessFile randomAccessFile;
-  int byteSize = 1110;
-  int position = 0;
-  int currPN = 1;
-  int maxPN;
+  int byteSize = 1110; //每页字节数
+  int position = 0; //起始位置
+  int currPN = 1; //当前页码
+  int maxPN; //最大页码
+  int _maxLength; //text文本最大长度
+  final int _sectionSize;
+  int _maxSectionOffset;
   Future<String> prevContent;
   Future<String> currContent;
   Future<String> nextContent;
@@ -186,6 +312,74 @@ class BookDecoder {
 
   Future<String> getNextPage() {
     return nextContent;
+  }
+
+  int getMaxLength() {
+    return randomAccessFile.lengthSync();
+  }
+
+  void initBook() {}
+
+  int get maxLength {
+    switch (book.bookType) {
+      case BookType.txt:
+        if (null == randomAccessFile) {
+          randomAccessFile = file.openSync(mode: FileMode.READ);
+          _maxLength = randomAccessFile.lengthSync();
+        }
+        break;
+      case BookType.epub:
+        break;
+      case BookType.pdf:
+        break;
+      case BookType.url:
+        break;
+      case BookType.urls:
+        break;
+    }
+    return _maxLength;
+  }
+
+  int get maxSectionOffset {
+    if (null != _maxSectionOffset) {
+      return _maxSectionOffset;
+    }
+    _maxSectionOffset = (maxLength / _sectionSize).ceil();
+    return _maxSectionOffset;
+  }
+
+  ///获取字块
+  String getSection({int offset, int length}) {
+//  print('bookService getSection');
+    String text = '';
+    switch (book.bookType) {
+      case BookType.txt:
+        if (null == randomAccessFile) {
+          randomAccessFile = file.openSync(mode: FileMode.READ);
+          _maxLength = randomAccessFile.lengthSync();
+        }
+        if (offset * length >= maxLength) {
+          return null;
+        }
+        randomAccessFile.setPositionSync(offset * length);
+        List<int> bytes = randomAccessFile.readSync(length);
+        text = utf8.decode(bytes);
+        break;
+      case BookType.epub:
+        break;
+      case BookType.pdf:
+        break;
+      case BookType.url:
+        break;
+      case BookType.urls:
+        break;
+    }
+    return text;
+  }
+
+  void close() {
+    randomAccessFile.close();
+    file = null;
   }
 }
 

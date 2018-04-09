@@ -51,8 +51,8 @@ class Book {
 //  BookType get bookType => BookType.values.firstWhere((t) => t.toString() == this.type);
   BookType get bookType =>
       BookType.values.firstWhere((t) {
-        print(t.toString());
-        print(this.type);
+//        print(t.toString());
+//        print(this.type);
         return t.toString() == 'BookType.' + this.type;
       });
 

@@ -1,5 +1,5 @@
 import 'dart:async';
-import 'dart:math';
+import 'dart:math' as math;
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
@@ -15,7 +15,8 @@ class Page extends StatefulWidget {
       @required this.initialPageNumber,
       @required this.currentReadModeId,
       @required this.readModeList,
-      @required this.handleShowMenu
+      @required this.handleShowMenu,
+      @required this.sectionSize
 //    @required this.title,
 //    @required this.text,
       })
@@ -26,28 +27,35 @@ class Page extends StatefulWidget {
   final int currentReadModeId;
   final List<ReadMode> readModeList;
   final VoidCallback handleShowMenu;
+  final sectionSize;
 
 //  final String title;
 //  final Future<String> text;
 
   @override
-  _PageState createState() => new _PageState();
+  _PageState createState() => new _PageState(sectionSize: sectionSize);
 }
 
 class _PageState extends State<Page> {
-  final ScrollController scrollController = new ScrollController();
-  final NeverScrollableScrollPhysics scrollPhysics =
-      new NeverScrollableScrollPhysics();
+  _PageState({@required this.sectionSize});
+
+  ScrollController scrollController;
+  ScrollPhysics scrollPhysics;
+
   final Color backgroundColor = new Color.fromRGBO(241, 236, 225, 1.0);
   final Color fontColor = new Color.fromRGBO(38, 38, 38, 1.0);
   final double fontSize = 18.0;
   final double fontHeight = 1.8;
   final List<String> list = <String>[]; //动态的内容列表
-  final sectionSize = 200; //每次读取字数
+  final sectionSize; //每次读取字数
+  int initSectionOffset; //当前字块偏移值
+  bool sectionReverse = false;
+
+  int currentSectionOffset; //当前字块偏移值
   final List<Widget> pages = <Widget>[];
+  Widget page;
   ReadMode readMode;
-  int currentPageNumber; //当前页码
-  int currentSectionNumber; //当前字块页码
+  int currentPageNumber = 1; //当前页码
   double pageHeight;
   double pageWidth;
   TapDownDetails tapDownDetails;
@@ -68,20 +76,21 @@ class _PageState extends State<Page> {
     });
   }
 
-  void refreshSections() {}
-
   ///获取标题
   String getTitle() {
     return '这是标题';
   }
 
   ///根据字块偏移值，获取[sectionSize]长度的字块
-  String getSection(int number) {
-    String str = 'section: $number\n';
-    for (int i = 0; i < sectionSize; i++) {
-      str += ' content: $i ';
-    }
-    return str;
+  String getSection(int index) {
+    print('get section offset = $currentSectionOffset');
+    return widget.book
+        .getSection(offset: currentSectionOffset, length: sectionSize);
+//    String str = 'section: $number\n';
+//    for (int i = 0; i < sectionSize; i++) {
+//      str += ' content: $i ';
+//    }
+//    return str;
   }
 
   ///TODO:获取目录
@@ -91,14 +100,12 @@ class _PageState extends State<Page> {
 
   ///用于监听滚动事件
   void handleScroll() {
-    print('Scrolled.');
-//    ScrollPosition position = scrollController.position;
-//    print('offset: ${position.pixels}');
+//    print('S  offset: ${scrollController.offset}');
 //    print('maxExtent: ${position.maxScrollExtent}');
 //    if ((position.maxScrollExtent - position.pixels) <= pageHeight * 2) {
 //      print('handleScroll: 获取内容');
 //      setState(() {
-//        list.add(getSection(currentSectionNumber));
+//        list.add(getSection(sectionOffset));
 //      });
 //    }
   }
@@ -116,65 +123,66 @@ class _PageState extends State<Page> {
     return lines * lineHeight - (fontHeight - 1) / 2 * fontSize;
   }
 
-  ///滚动到上一页
-  ///根据页码[currentPageNumber]计算滚动偏移值，
-  ///需要注意页码与偏移值的关系
-  void handlePrevPage() {
-    print('上一页');
-    ScrollPosition position = scrollController.position;
-//    print(position);
-    double maxScrollExtent = position.maxScrollExtent;
-    double offset = position.pixels;
-    print('scrollHeight: $scrollHeight');
-    print('currentPageNumber: $currentPageNumber');
-    if (currentPageNumber <= 2) {
-      currentPageNumber = 1;
-    } else {
-      currentPageNumber--;
-    }
-    double y = scrollHeight * (currentPageNumber - 1);
-    print('want up to $y');
-    print('offset: $offset');
-    print('max: $maxScrollExtent');
-    position.animateTo(y,
-        duration: const Duration(microseconds: 1), curve: Curves.linear);
-  }
+  ///单次滚动距离
+  double get scrollOffset => scrollHeight * (currentPageNumber.abs() - 1);
 
-  ///滚动到下一页
-  ///根据页码[currentPageNumber]计算滚动偏移值，
-  ///需要注意页码与偏移值的关系
-  void handleNextPage() {
-    print('下一页');
+  ///[value]==true，下一页，[value]==false，上一页
+  void handlePageChanged(bool value) {
+    if (value) {
+      print('下一页');
+    } else {
+      print('上一页');
+    }
+//    print('old currentPageNumber: $currentPageNumber');
     ScrollPosition position = scrollController.position;
-//    print(position);
-    double maxScrollExtent = position.maxScrollExtent;
-    double offset = position.pixels;
-    print('scrollHeight: $scrollHeight');
-    print('currentPageNumber: $currentPageNumber');
-    currentPageNumber++;
-    double y = scrollHeight * (currentPageNumber - 1);
-    print('want down to: $y');
-    print('offset: $offset');
-    print('max: $maxScrollExtent');
-    position.animateTo(y,
+//    print('current offset: ${scrollController.offset}');
+//    print('max offset: ${position.maxScrollExtent}');
+    if (value &&
+        !sectionReverse &&
+        scrollController.offset >= position.maxScrollExtent) {
+//      print('滚动的极限');
+      return;
+    } else if (!value &&
+        sectionReverse &&
+        scrollController.offset >= position.maxScrollExtent) {
+//      print('滚动的极限2');
+      return;
+    }
+    ///根据条件，对页码进行增一或减一
+    if (!value) {
+      if (sectionReverse) {
+        currentPageNumber++;
+      } else {
+        currentPageNumber--;
+      }
+    } else {
+      if (sectionReverse) {
+        currentPageNumber--;
+      } else {
+        currentPageNumber++;
+      }
+    }
+
+    ///当前页码小于等于0，并且initSectionOffset>0，则可创建逆序列表
+    if (currentPageNumber <= 0 && initSectionOffset > 0) {
+      reversePage();
+      return;
+    }
+
+//    print('new currentPageNumber: $currentPageNumber');
+//    print('want up to: ${math.min(scrollOffset, position.maxScrollExtent)}');
+
+    position.animateTo(math.min(scrollOffset, position.maxScrollExtent),
         duration: const Duration(microseconds: 1), curve: Curves.linear);
   }
 
   void handleTapDown(TapDownDetails details) {
-//    media = MediaQuery.of(context);
-//    print('handleTapDown');
-//    print(media);
-    var x = details.globalPosition.dx;
-    var y = details.globalPosition.dy;
-//    print("tap down " + x.toString() + ", " + y.toString());
     tapDownDetails = details;
   }
 
   ///处理点击弹起事件
   ///调用[calculateTapAction]方法以执行相应的功能
   void handleTapUp(TapUpDetails tapUpDetails) {
-    var x = tapUpDetails.globalPosition.dx;
-    var y = tapUpDetails.globalPosition.dy;
     calculateTapAction(
         tapDownDetails: tapDownDetails,
         tapUpDetails: tapUpDetails,
@@ -208,20 +216,24 @@ class _PageState extends State<Page> {
     }
     if (x <= grid['x1']) {
       //上一页
-      handlePrevPage();
+//      handlePrevPage();
+      handlePageChanged(false);
     } else if (x >= grid['x2']) {
       //下一页
-      handleNextPage();
+//      handleNextPage();
+      handlePageChanged(true);
     } else {
       if (y <= grid['y1']) {
         //上一页
-        handlePrevPage();
+//        handlePrevPage();
+        handlePageChanged(false);
       } else if (y >= grid['y2']) {
         //下一页
-        handleNextPage();
+//        handleNextPage();
+        handlePageChanged(true);
       } else {
         //打开菜单
-        print('打开菜单');
+//        print('打开菜单');
         widget.handleShowMenu();
       }
     }
@@ -231,22 +243,69 @@ class _PageState extends State<Page> {
   ///调用[getSection]方法，获取第[index]的字块
   ///[getSection]是与[BookService]的桥梁
   Widget buildSections(BuildContext context, int index) {
+//    print('buildSections index=$index');
+    if (!sectionReverse) {
+//      print('正序');
+      currentSectionOffset = index + initSectionOffset;
+    } else {
+//      print('倒序');
+      currentSectionOffset = initSectionOffset - index - 1;
+    }
+    if (currentSectionOffset < 0) {
+      currentSectionOffset = 0;
+      return null;
+    }
+    if (currentSectionOffset > widget.book.maxSectionOffset) {
+      currentSectionOffset = widget.book.maxSectionOffset;
+    }
     return new Section(
       content: getSection(index),
       style: bodyStyle,
+      minHeight: scrollHeight,
     );
+  }
+
+  ///构建逆序页面
+  void reversePage() {
+    print('reversePage');
+    scrollController = new ScrollController();
+    scrollController.addListener(handleScroll);
+    setState(() {
+      sectionReverse = !sectionReverse;
+      currentPageNumber = 1;
+    });
+  }
+
+  Widget getPage() {
+    print('getpage');
+    page = new ListView.builder(
+        key: new Key(sectionReverse.toString()),
+        padding: const EdgeInsets.all(0.0),
+        reverse: sectionReverse,
+        physics: scrollPhysics,
+        controller: scrollController,
+        itemCount: sectionReverse
+            ? initSectionOffset
+            : widget.book.maxSectionOffset - initSectionOffset,
+        itemBuilder: buildSections);
+    if (null == page) {
+      print('page == null');
+    }
+    return page;
   }
 
   ///构建内容页面
   ///用于展示[Section]列表，此无限列表禁止手动划动
   ///通过[ScrollController]实现间断跳跃
-  Widget buildPage() {
+  Widget buildPages() {
+    print('buildPages');
+    pages.clear();
     if (pages.isEmpty) {
-      pages.add(new ListView.builder(
-          padding: const EdgeInsets.all(0.0),
-          physics: scrollPhysics,
-          controller: scrollController,
-          itemBuilder: buildSections));
+      pages.add(getPage());
+//    pages.add(new Text('hello'));
+    }
+    if (pages.isEmpty) {
+      print('pages.isEmpty = true');
     }
     return new Stack(
       children: pages,
@@ -273,9 +332,17 @@ class _PageState extends State<Page> {
   void initState() {
     super.initState();
     print('initState PageState');
-    currentPageNumber = widget.initialPageNumber;
+//    initSectionOffset = 19740;
+    initSectionOffset = 10;
+//    print('currentPageNumber = $currentPageNumber');
+//    print('initSectionOffset = $initSectionOffset');
     initReadMode();
+    scrollController = new ScrollController();
     scrollController.addListener(handleScroll);
+//    scrollPhysics =
+//    new NeverScrollableScrollPhysics(parent: new OverflowScrollPhysics());
+    scrollPhysics =
+        new NeverScrollableScrollPhysics(parent: new ClampingScrollPhysics());
   }
 
   @override
@@ -310,8 +377,8 @@ class _PageState extends State<Page> {
                   builder: (BuildContext context, BoxConstraints constraints) {
                 pageHeight = constraints.maxHeight;
                 pageWidth = constraints.maxWidth;
-                print('View Size is H:$pageHeight,W:$pageWidth');
-                return new Container(height: scrollHeight, child: buildPage());
+//                print('build view with Size -> H:$pageHeight,W:$pageWidth');
+                return new Container(height: scrollHeight, child: buildPages());
               }),
             ),
             new Container(
@@ -329,86 +396,26 @@ class _PageState extends State<Page> {
         ),
       ),
     );
+  }
 
-    return new GestureDetector(
-      child: new Container(
-          decoration: new BoxDecoration(
-              color: readMode?.backgroundColor ?? backgroundColor,
-              image: readMode?.image),
-          padding: const EdgeInsets.symmetric(horizontal: 16.0),
-          child: new Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: <Widget>[
-              new Container(
-                height: 30.0,
-                child: new Row(
-                  children: <Widget>[
-                    new Container(
-                      child: new Text(
-                        getTitle(),
-                        style: titleStyle,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              new Expanded(
-                  child: new Container(
-                child: new SingleChildScrollView(
-                  child: new Text('hello world'),
-                ),
-//              child: new FutureBuilder(
-//                  future: widget.text,
-//                  builder:
-//                      (BuildContext context, AsyncSnapshot<String> snapshot) {
-//                    if (snapshot.connectionState == ConnectionState.done &&
-//                        null != snapshot.data) {
-//                      return new Text(
-//                        snapshot.data,
-//                        style: bodyStyle,
-//                        softWrap: true,
-//                        overflow: TextOverflow.clip,
-//                        maxLines: 24,
-//                      );
-//                    } else {
-//                      return new Container(
-//                        child: new Center(
-//                          child: new Text('读取中...'),
-//                        ),
-//                      );
-//                    }
-//                  }),
-              )),
-              new Container(
-                height: 30.0,
-                child: new Row(
-                  children: <Widget>[
-                    new RotatedBox(
-                      child: new Icon(Icons.battery_std),
-                      quarterTurns: 1,
-                    )
-                  ],
-                ),
-              )
-            ],
-          )
-//    child: new IconButton(icon: const Icon(Icons.message), onPressed: (){
-//      print('messgae');
-//    }),
-          ),
-    );
+  @override
+  void dispose() {
+    super.dispose();
   }
 }
 
 class Section extends StatelessWidget {
-  Section({@required this.content, @required this.style});
+  Section({@required this.content, @required this.style, this.minHeight});
 
   final String content;
   final TextStyle style;
+  final double minHeight;
 
   @override
   Widget build(BuildContext context) {
     return new Container(
+//      color: Colors
+//          .primaries[new math.Random().nextInt(1000) % Colors.primaries.length],
       child: new Text(
         content,
         style: style,

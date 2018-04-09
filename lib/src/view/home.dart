@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:light/src/view/explore/explore.dart';
 import 'package:light/src/view/shelf/shelf.dart';
@@ -7,12 +8,16 @@ import 'package:light/src/view/profile/profile.dart';
 
 class Home extends StatefulWidget {
   const Home(
-      {Key key, @required this.useLightTheme, @required this.onThemeChanged})
+      {Key key,
+      @required this.useLightTheme,
+      @required this.prefs,
+      @required this.onThemeChanged})
       : assert(useLightTheme != null),
         assert(onThemeChanged != null),
         super(key: key);
 
   final bool useLightTheme;
+  final SharedPreferences prefs;
   final ValueChanged<bool> onThemeChanged;
 
   @override
@@ -29,18 +34,21 @@ class _HomeState extends State<Home> {
       navigationItems = <_NavigationItem>[
         new _NavigationItem(
             icon: Icons.explore,
+            prefs: widget.prefs,
             title: '发现',
             name: _NavigationName.explore,
             useLightTheme: widget.useLightTheme,
             onThemeChanged: widget.onThemeChanged),
         new _NavigationItem(
             icon: Icons.import_contacts,
+            prefs: widget.prefs,
             title: '收藏',
             name: _NavigationName.shelf,
             useLightTheme: widget.useLightTheme,
             onThemeChanged: widget.onThemeChanged),
         new _NavigationItem(
             icon: Icons.explore,
+            prefs: widget.prefs,
             title: '我的',
             name: _NavigationName.profile,
             useLightTheme: widget.useLightTheme,
@@ -91,10 +99,12 @@ class _NavigationItem {
       @required this.title,
       @required this.name,
       @required this.useLightTheme,
+      @required this.prefs,
       @required this.onThemeChanged})
       : this.item = new BottomNavigationBarItem(
             icon: new Icon(icon), title: new Text(title));
   final useLightTheme;
+  final SharedPreferences prefs;
   final ValueChanged<bool> onThemeChanged;
   final String title;
   final _NavigationName name;
@@ -117,6 +127,7 @@ class _NavigationItem {
         page = new Shelf(
           key: new Key(name.toString()),
           useLightTheme: useLightTheme,
+          prefs: prefs,
           onThemeChanged: onThemeChanged,
           showReadProgress: true,
         );

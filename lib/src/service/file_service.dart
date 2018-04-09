@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'dart:async';
 import 'package:path/path.dart';
+import 'package:flutter/material.dart';
 import 'package:path_provider/path_provider.dart';
 
 enum FileType { TEXT, EPUB, PDF, OTHER, NOT_FOUND, DIRECTORY }
@@ -52,9 +53,9 @@ String getBasename(var file) {
 
 String getName(var file) {
   String baseName = getBasename(file);
-  print('baseName: $baseName');
+//  print('baseName: $baseName');
   String name = _regName.firstMatch(baseName)?.group(1);
-  print(_regName.firstMatch(baseName));
+//  print(_regName.firstMatch(baseName));
   return name;
 //  return _regName.firstMatch(baseName)?.group(1);
 }
@@ -62,8 +63,8 @@ String getName(var file) {
 String getSuffix(var file) {
   String baseName = getBasename(file);
   String suffix = _regSuffix.firstMatch(baseName)?.group(1);
-  print(_regSuffix.firstMatch(baseName).group(0));
-  print(_regSuffix.firstMatch(baseName).group(1));
+//  print(_regSuffix.firstMatch(baseName).group(0));
+//  print(_regSuffix.firstMatch(baseName).group(1));
   return suffix;
 }
 
@@ -119,4 +120,18 @@ class FileService {
       return null;
     }
   }
+}
+
+Image getImage(String uri) {
+  RegExp regasset = new RegExp(r'^asset');
+  RegExp regurl = new RegExp(r'^http');
+  RegExp regfile = new RegExp(r'^/storage');
+  if (regasset.hasMatch(uri)) {
+    return new Image.asset(uri);
+  } else if (regurl.hasMatch(uri)) {
+    return new Image.network(uri);
+  } else if (regfile.hasMatch(uri)) {
+    return new Image.file(new File(uri));
+  }
+  return null;
 }

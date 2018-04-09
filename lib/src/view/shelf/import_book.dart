@@ -1,9 +1,11 @@
 import 'dart:io';
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:path_provider/path_provider.dart';
 
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:light/src/service/file_service.dart';
 import 'package:light/src/model/book.dart';
 import 'package:light/src/view/reader/reader.dart';
@@ -17,9 +19,11 @@ import 'package:light/src/parts/selected_list_model.dart';
 enum DialogAction { requestForPermission }
 
 class ImportBook extends StatefulWidget {
-  ImportBook({Key key, this.path, this.isRoot: false}) : super(key: key);
+  ImportBook({Key key, this.path, this.isRoot: false, @required this.prefs})
+      : super(key: key);
   final String path;
   final isRoot;
+  final SharedPreferences prefs;
 
   @override
   ImportBookState createState() => new ImportBookState();
@@ -143,7 +147,7 @@ class ImportBookState extends State<ImportBook> {
         bookService.addLocalBook(entity.path);
         Book book = new Book.fromEntity(entity: entity);
         Navigator.push(context,
-            new CustomPageRoute(builder: (context) => new Reader(book: book)));
+            new CustomPageRoute(builder: (context) => new Reader(book: book, prefs: widget.prefs,)));
       }
     }
   }
@@ -249,7 +253,7 @@ class ImportBookState extends State<ImportBook> {
       entityList.clear();
       isLoading = true;
     });
-    new Timer(const Duration(milliseconds: 200), (){
+    new Timer(const Duration(milliseconds: 200), () {
       if (null != entity) {
         doScan(entity);
       } else {

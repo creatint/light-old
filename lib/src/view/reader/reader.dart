@@ -4,17 +4,22 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
+//import 'package:light/src/view/custom_page_route.dart';
 import 'package:light/src/view/reader/page.dart';
 import 'package:light/src/service/book_service.dart';
 import 'package:light/src/model/book.dart';
 import 'package:light/src/view/reader/menu.dart';
 import 'package:light/src/view/reader/mask.dart';
+import 'package:light/src/model/read_mode.dart';
 
 ///epub、pdf、txt、url_table
 class Reader extends StatefulWidget {
-  Reader({Key key, @required this.book}) : super(key: key);
+  Reader({Key key, @required this.book, @required this.prefs})
+      : super(key: key);
   final Book book;
+  final SharedPreferences prefs;
 
   @override
   _ReaderState createState() => new _ReaderState();
@@ -22,99 +27,62 @@ class Reader extends StatefulWidget {
 
 class _ReaderState extends State<Reader> {
   GlobalKey _menuKey = new GlobalKey();
-  GlobalKey _prevPageKey = new GlobalKey();
   GlobalKey _currPageKey = new GlobalKey();
-  GlobalKey _nextPageKey = new GlobalKey();
+  int sectionSize = 200;
   static final BookService bookService = new BookService();
   BookDecoder bookDecoder;
-
-  Color backgroundColor = new Color.fromRGBO(241, 236, 225, 1.0);
-  Color fontColor = new Color.fromRGBO(38, 38, 38, 1.0);
-  double fontSize = 20.0;
-
-//  ByteData data;
-  List<int> data;
+  List<ReadMode> readModeList;
+  int currentReadModeId;
   bool isShowMenu = false;
-  int currPN = 1; //默认页码为1
-  Page prevPage; //上一页
-  Page currPage; //当前页
-  Page nextPage; //下一页
 
-  Page getPrevPage() {
-    print('getPrevPage');
-    if (1 == currPN) return null;
-    nextPage = currPage;
-    setState(() {
-      currPN--;
-      currPage = prevPage;
-    });
-    prevPage = new Page(
-      key: _prevPageKey,
-      title: '第一章 啊哈哈无哈啊哈',
-      text: bookDecoder.getPrevPage(),
-      backgroundColor: backgroundColor,
-      fontSize: fontSize,
-      fontColor: fontColor,
-    );
-    return prevPage;
-  }
-
-  Page getNextPage() {
-    print('getNextPage');
-    prevPage = currPage;
-    setState(() {
-      currPN++;
-      currPage = nextPage;
-    });
-    nextPage = new Page(
-      key: _nextPageKey,
-      title: '第一章 哈哈呜哈哈',
-      text: bookDecoder.getNextPage(),
-      backgroundColor: backgroundColor,
-      fontSize: fontSize,
-      fontColor: fontColor,
-    );
-    return nextPage;
-  }
-
+  ///处理显隐菜单事件
   void handleShowMenu() {
     print('showMenu');
-    setState(() {
-      isShowMenu = !isShowMenu;
-      print(isShowMenu);
+    Navigator
+        .push(
+            context,
+            new PageRouteBuilder(
+                opaque: false,
+                pageBuilder: (BuildContext context, _, __) {
+                  return new Menu(
+                    key: _menuKey,
+                    isShow: isShowMenu,
+                    readModeList: readModeList,
+                    currentReadModeId: currentReadModeId,
+                    handleReadModeChange: handleReadModeChange,
+                  );
+                }))
+        .then((value) {
+      if (true == value) {
+        Navigator.pop(context);
+      }
     });
-    if (isShowMenu) {
-      SystemChrome.setEnabledSystemUIOverlays(SystemUiOverlay.values);
-      SystemChrome.setSystemUIOverlayStyle(SystemUiOverlayStyle.light);
-    } else {
-      SystemChrome.setEnabledSystemUIOverlays([]);
-    }
   }
 
-  Widget getPage() {
-    print(MediaQuery.of(context).size);
-    List<Page> list = <Page>[];
-    currPage = new Page(
-        key: _currPageKey,
-        title: '第一章 啊哈哈无哈啊哈',
-        backgroundColor: backgroundColor,
-        fontSize: fontSize,
-        fontColor: fontColor,
-        text: bookDecoder.getPage(currPN));
-    list.add(currPage);
+  ///处理主题模式改变事件
+  void handleReadModeChange(int id) {
+    print('handleReadModeChange id=$id');
+    if (id >= 0) {
+      widget.prefs.setInt('readModeId', id);
+    }
+    setState(() {
+      print('改变了样式主题 id=$id');
+      currentReadModeId = id;
+    });
+  }
 
-    return new Stack(
-      children: list,
-    );
+  int getInitialPageNumber() {
+    return 1;
   }
 
   @override
   void initState() {
     super.initState();
-    print('Reader initState');
-    bookDecoder = new BookDecoder(book: widget.book);
     SystemChrome.setEnabledSystemUIOverlays([]);
-    print(widget.book);
+    print('Reader initState');
+    bookDecoder = new BookDecoder(book: widget.book, sectionSize: sectionSize);
+    readModeList = bookService.getReadModes();
+    currentReadModeId = widget.prefs.getInt('readModeId') ?? 16;
   }
 
   @override
@@ -123,19 +91,18 @@ class _ReaderState extends State<Reader> {
         body: new Stack(
       fit: StackFit.expand,
       children: <Widget>[
-        new GestureDetector(
-            child: getPage(),
-        ),
-        new Mask(
-          isShow: false,
-          showMenu: handleShowMenu,
-          nextPage: getNextPage,
-          prevPage: getPrevPage,
-        ),
-        new Menu(
-          key: _menuKey,
-          isShow: isShowMenu,
-        )
+        new Page(
+            key: _currPageKey,
+            book: bookDecoder,
+            initialPageNumber: getInitialPageNumber(),
+            prefs: widget.prefs,
+            currentReadModeId: currentReadModeId,
+            readModeList: readModeList,
+            handleShowMenu: handleShowMenu,
+            sectionSize: sectionSize),
+//        new Mask(
+//          isShow: false,
+//        ),
       ],
     ));
   }

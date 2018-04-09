@@ -50,6 +50,7 @@ class _AppState extends State<App> {
   Widget build(BuildContext context) {
     return new MaterialApp(
       title: 'Light',
+      debugShowCheckedModeBanner: false,
 //      theme: _useLightTheme ? _kGalleryLightTheme : _kGalleryDarkTheme,
       routes: <String, WidgetBuilder>{
 //        '/': (BuildContext context) => new ImportBook(
@@ -60,6 +61,7 @@ class _AppState extends State<App> {
 //            ),
         '/': (BuildContext context) => new Home(
               useLightTheme: _useLightTheme,
+              prefs: widget.prefs,
               onThemeChanged: (bool value) {
                 setState(() {
                   print('set _useLightTheme to $value');
