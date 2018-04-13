@@ -11,13 +11,13 @@ Future<List<Book>> getOnlineBooksAll(String word) {
 
   if (mock) {
     return new Future<List<Book>>.delayed(new Duration(milliseconds: 2000), () => <Book>[]);
-    return new Future<List<Book>>.delayed(new Duration(milliseconds: 2000), () => <Book>[
-      new Book(title: '书1'),
-      new Book(title: '书2'),
-      new Book(title: '书3'),
-    ]);
+//    return new Future<List<Book>>.delayed(new Duration(milliseconds: 2000), () => <Book>[
+//      new Book(title: '书1'),
+//      new Book(title: '书2'),
+//      new Book(title: '书3'),
+//    ]);
   }
   return http.get(url).then((response) {
-    return JSON.decode(response.body);
+    return json.decode(response.body);
   });
 }

@@ -8,7 +8,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:light/src/service/file_service.dart';
 import 'package:light/src/model/book.dart';
-import 'package:light/src/view/reader/reader.dart';
+import 'package:light/src/view/reader2/reader.dart';
 import 'package:light/src/service/book_service.dart';
 import 'package:light/src/view/custom_page_route.dart';
 import 'package:light/src/view/custom_indicator.dart';
@@ -88,22 +88,22 @@ class ImportBookState extends State<ImportBook> {
             .copyWith(color: theme.textTheme.caption.color);
         showDialog<bool>(
             context: context,
-            child: new AlertDialog(
-                title: const Text('权限不足'),
-                content: new Text('浏览文件需要文件读取权限，是否跳转到Light设置页面？',
-                    style: dialogTextStyle),
-                actions: <Widget>[
-                  new FlatButton(
-                      child: const Text('拒绝'),
-                      onPressed: () {
-                        Navigator.pop(context, false);
-                      }),
-                  new FlatButton(
-                      child: const Text('同意'),
-                      onPressed: () {
-                        Navigator.pop(context, true);
-                      })
-                ])).then<bool>((value) {
+            builder: (BuildContext context) => new AlertDialog(
+                    title: const Text('权限不足'),
+                    content: new Text('浏览文件需要文件读取权限，是否跳转到Light设置页面？',
+                        style: dialogTextStyle),
+                    actions: <Widget>[
+                      new FlatButton(
+                          child: const Text('拒绝'),
+                          onPressed: () {
+                            Navigator.pop(context, false);
+                          }),
+                      new FlatButton(
+                          child: const Text('同意'),
+                          onPressed: () {
+                            Navigator.pop(context, true);
+                          })
+                    ])).then<bool>((value) {
           print(value);
           if (true == value) {
             _handleOpenApplicationSettings();
@@ -146,8 +146,13 @@ class ImportBookState extends State<ImportBook> {
         print('handle tap 是文件 ${entity.path}');
         bookService.addLocalBook(entity.path);
         Book book = new Book.fromEntity(entity: entity);
-        Navigator.push(context,
-            new CustomPageRoute(builder: (context) => new Reader(book: book, prefs: widget.prefs,)));
+        Navigator.push(
+            context,
+            new CustomPageRoute(
+                builder: (context) => new Reader(
+                      book: book,
+                      prefs: widget.prefs,
+                    )));
       }
     }
   }
@@ -211,21 +216,21 @@ class ImportBookState extends State<ImportBook> {
     print('imported $num books');
     showDialog<bool>(
         context: context,
-        child: new AlertDialog(
-            title: new Text(num > 0 ? '成功导入${num}个资源' : '导入失败'),
-            content: new Text('返回书架？', style: dialogTextStyle),
-            actions: <Widget>[
-              new FlatButton(
-                  child: const Text('否'),
-                  onPressed: () {
-                    Navigator.pop(context, false);
-                  }),
-              new FlatButton(
-                  child: const Text('是'),
-                  onPressed: () {
-                    Navigator.pop(context, true);
-                  })
-            ])).then<bool>((value) {
+        builder: (BuildContext context) => new AlertDialog(
+                title: new Text(num > 0 ? '成功导入$num个资源' : '导入失败'),
+                content: new Text('返回书架？', style: dialogTextStyle),
+                actions: <Widget>[
+                  new FlatButton(
+                      child: const Text('否'),
+                      onPressed: () {
+                        Navigator.pop(context, false);
+                      }),
+                  new FlatButton(
+                      child: const Text('是'),
+                      onPressed: () {
+                        Navigator.pop(context, true);
+                      })
+                ])).then<bool>((value) {
       print(value);
       if (value) {
         Navigator.pop(context);

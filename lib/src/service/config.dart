@@ -1,9 +1,9 @@
 import 'dart:io';
 import 'dart:async';
-import 'dart:convert';
-import 'dart:typed_data';
+//import 'dart:convert';
+//import 'dart:typed_data';
 import 'package:path/path.dart';
-import 'package:flutter/services.dart';
+//import 'package:flutter/services.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:options_file/options_file.dart';
 
@@ -35,7 +35,7 @@ class Config {
     }
   }
 
-  Config._() {}
+  Config._();
 
   String getString(String key) {
     return _optionFile.getString(key);

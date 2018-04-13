@@ -11,7 +11,7 @@ class DB {
   static Config _config;
   static Database _database;
 
-  DB._() {}
+  DB._();
 
   factory DB([String name = 'default']) {
     if (null != _instance)

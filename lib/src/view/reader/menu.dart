@@ -1,222 +1,228 @@
-import 'dart:math' as math;
-import 'dart:async';
-import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-
+import 'setting_pannel.dart';
+import '../parts/item_button.dart';
+import 'setting_list.dart';
 import 'package:light/src/model/read_mode.dart';
+
+enum Actions { list, mode, night, more }
 
 class Menu extends StatefulWidget {
   Menu(
       {Key key,
-      @required this.isShow: false,
-      @required this.handleReadModeChange,
-      @required this.currentReadModeId,
-      @required this.readModeList})
-      : super(key: key);
-  final bool isShow;
-  final currentReadModeId;
-  final ValueChanged<int> handleReadModeChange;
+      @required this.handleSettings,
+      @required this.readModeList,
+      @required this.currentReadModeId});
+
+  final HandleSettings handleSettings;
   final List<ReadMode> readModeList;
+  final int currentReadModeId;
 
   @override
-  _MenuState createState() => new _MenuState();
+  MenuState createState() => new MenuState();
 }
 
-enum Actions { chapters, modes, darkMode, more }
+class MenuState extends State<Menu> {
+  ///是否显示底部默认导航栏
+  bool showBottom = true;
+  bool showHeader = true;
 
-class _MenuState extends State<Menu> with TickerProviderStateMixin {
-  bool isShow = false;
-  AnimationController _controller;
-  Animation<double> _animation;
-  EdgeInsets padding;
-  EdgeInsets minimum;
-  ThemeData themeData;
-  Color iconColor;
-  Color backgroundColor;
-
-  ///初始化样式 与 动画
-  void initTheme() {
-    padding = MediaQuery.of(context).padding;
-    minimum = EdgeInsets.zero;
-    themeData = Theme.of(context);
-    iconColor = themeData.brightness == Brightness.light
-        ? Colors.white
-        : themeData.accentColor;
-    backgroundColor = themeData.brightness == Brightness.light
-        ? Colors.black
-        : themeData.accentColor;
-
-    if (false == isShow) {
-      _controller.forward();
-      isShow = true;
-      SystemChrome.setEnabledSystemUIOverlays(SystemUiOverlay.values);
-      SystemChrome.setSystemUIOverlayStyle(SystemUiOverlayStyle.light);
-    }
+  void onTapMiddle() {
+    print('onTap@Menu');
+    Navigator.pop(context);
   }
 
-  ///相应按钮
-  void _handleMenu(Actions action) {
-    print(action);
+  void onTapMenu(int index) {
+    print('onTapMenu $index');
+  }
+
+  void handleModeChange() {
+    print('handleModeChange');
+  }
+
+  void handleSettings(Settings setting, dynamic value) {}
+
+  void handleMenu(Actions action) {
     switch (action) {
-      case Actions.modes:
-        handleModes();
+      case Actions.list:
+        showHeader = false;
+        showBottom = false;
+        SystemChrome.setEnabledSystemUIOverlays([]);
+        Navigator
+            .push<bool>(
+                context,
+                new PageRouteBuilder<bool>(
+                    opaque: false,
+                    transitionDuration: const Duration(seconds: 0),
+                    pageBuilder: (BuildContext context, _, __) {
+                      return new Container(
+                          child: new Row(
+                        children: <Widget>[
+                          new Expanded(
+                              child: new Container(
+                            color: Colors.white,
+                            child: new Center(
+                              child: new Text('目录'),
+                            ),
+                          )),
+                          new GestureDetector(
+                            onTap: () {
+                              Navigator.pop(context, true);
+                            },
+                            child: new Container(
+                              color: Colors.black26,
+                              width: 50.0,
+                            ),
+                          )
+                        ],
+                      ));
+                    }))
+            .then((value) {
+//          Navigator.pop(context);
+          showHeader = true;
+          showBottom = true;
+          SystemChrome.setEnabledSystemUIOverlays(SystemUiOverlay.values);
+        });
         break;
-      default:
+      case Actions.mode:
+        Navigator
+            .push<bool>(
+                context,
+                new PageRouteBuilder<bool>(
+                    opaque: false,
+                    transitionDuration: const Duration(seconds: 0),
+                    pageBuilder: (BuildContext context, _, __) =>
+                        new SettingPannel(
+                          readModeList: widget.readModeList,
+                          currentReadModeId: widget.currentReadModeId,
+                          handleSettings: handleSettings,
+                        )))
+            .then((bool value) {
+          if (value == true) {
+            Navigator.pop(context);
+          } else {
+            setState(() {
+              showBottom = true;
+            });
+          }
+        });
+        setState(() {
+          showBottom = false;
+        });
+        break;
+      case Actions.night:
+        break;
+      case Actions.more:
+        Navigator
+            .push<bool>(
+                context,
+                new PageRouteBuilder<bool>(
+                    opaque: false,
+                    transitionDuration: const Duration(seconds: 0),
+                    pageBuilder: (BuildContext context, _, __) =>
+                        new SettingList()))
+            .then((value) {
+        });
+        break;
     }
-  }
-
-  void handleModes() {}
-
-  ///退出按钮页面,退出动画
-  void handleHideMenu() {
-    print('tap middle');
-    SystemChrome.setEnabledSystemUIOverlays([]);
-    _controller.reverse().then((_) {
-      Navigator.pop(context);
-    });
-  }
-
-  ///
-  void handleMenuState() {}
-
-  void handleBookMark() {
-    print('add book Mark');
-  }
-
-  Widget buildMiddle() {
-    return new Expanded(
-        child: new GestureDetector(
-      child: new Container(
-        color: Colors.transparent,
-      ),
-      onTap: handleHideMenu,
-    ));
-  }
-
-  Widget buildAppBar() {
-    return new SizeTransition(
-      sizeFactor: _animation,
-      child: new Container(
-        padding: new EdgeInsets.only(
-          top: math.max(padding.top, minimum.top),
-        ),
-        color: backgroundColor,
-        height: 72.0,
-        child: new Row(
-          children: <Widget>[
-            new IconButton(
-                icon: const Icon(Icons.arrow_back),
-                onPressed: () {
-                  Navigator.pop(context, true);
-                }),
-            new Expanded(child: new Container()),
-            new IconButton(
-                icon: const Icon(Icons.bookmark), onPressed: handleBookMark)
-          ],
-        ),
-      ),
-    );
-  }
-
-  ///构建底部操作栏
-  Widget buildBottomBar() {
-    return new SizeTransition(
-      sizeFactor: _animation,
-      child: new IconTheme(
-        data: new IconThemeData(color: iconColor, size: 24.0),
-        child: new Container(
-          color: backgroundColor,
-          height: 60.0,
-          child: new Row(
-            children: <Widget>[
-              new InkResponse(
-                child: new Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: <Widget>[
-                    new IconButton(
-                        icon: const Icon(
-                          Icons.list,
-                          size: 24.0,
-                        ),
-                        onPressed: () => _handleMenu(Actions.chapters)),
-                  ],
-                ),
-              ),
-              new Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: <Widget>[
-                  new IconButton(
-                      icon: const Icon(Icons.text_fields),
-                      onPressed: () => _handleMenu(Actions.modes)),
-                ],
-              ),
-              new Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: <Widget>[
-                  new IconButton(
-                      icon: const Icon(Icons.brightness_2),
-                      onPressed: () => _handleMenu(Actions.darkMode)),
-                ],
-              ),
-              new Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: <Widget>[
-                  new IconButton(
-                      icon: const Icon(Icons.settings),
-                      onPressed: () => _handleMenu(Actions.more)),
-                ],
-              ),
-            ],
-            mainAxisAlignment: MainAxisAlignment.spaceAround,
-          ),
-        ),
-      ),
-    );
-  }
-
-  ///构建阅读模式操作面板
-  Widget buildReadModePannel() {
-    return new Container();
   }
 
   @override
   void initState() {
     super.initState();
-    print('init Menu State');
-    _controller = new AnimationController(
-        duration: const Duration(milliseconds: 200), vsync: this);
-    _animation =
-        new CurvedAnimation(parent: _controller, curve: Curves.easeInOut);
+    print('initState@Menu');
+    SystemChrome.setEnabledSystemUIOverlays(SystemUiOverlay.values);
+  }
+
+  @override
+  void dispose() {
+    super.dispose();
+    print('dispose@Menu');
+    SystemChrome.setEnabledSystemUIOverlays([]);
   }
 
   @override
   Widget build(BuildContext context) {
-    initTheme();
-    return new Scaffold(
-      backgroundColor: Colors.transparent,
-      body: new IconTheme(
-        data: new IconThemeData(color: iconColor),
-        child: new Container(
-          padding: new EdgeInsets.only(
-            left: math.max(padding.left, minimum.left),
-            right: math.max(padding.right, minimum.right),
-            bottom: math.max(padding.bottom, minimum.bottom),
-          ),
-          child: new Column(
-            children: <Widget>[
-              buildAppBar(),
-              new Divider(
-                height: 1.0,
+    return new Theme(
+      data: Theme.of(context).copyWith(buttonColor: Colors.orange),
+      child: new Scaffold(
+        backgroundColor: Colors.transparent,
+        body: Column(
+          children: <Widget>[
+            new Offstage(
+              offstage: !showHeader,
+              child: new AppBar(
+                backgroundColor: Colors.black87,
+                leading: new IconButton(
+                    icon: const Icon(Icons.arrow_back),
+                    onPressed: () {
+                      Navigator.pop(context, true);
+                    }),
               ),
-              buildMiddle(),
-              new Divider(
-                height: 1.0,
+            ),
+            new Expanded(
+                child: new GestureDetector(
+                    onTap: onTapMiddle,
+                    child: new Container(
+                      color: Colors.black26,
+                    ))),
+            new Offstage(
+              offstage: !showBottom,
+              child: new Container(
+                padding: const EdgeInsets.only(top: 5.0),
+                height: 65.0,
+                color: Colors.black87,
+                child: new Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                  children: <Widget>[
+                    new ItemButton(
+                      icon: const Icon(
+                        Icons.list,
+                        color: Colors.white70,
+                      ),
+                      title: const Text(
+                        '目录',
+                        style: const TextStyle(color: Colors.white70),
+                      ),
+                      onTap: () {
+                        print('目录');
+                        handleMenu(Actions.list);
+                      },
+                    ),
+                    new ItemButton(
+                      icon:
+                          const Icon(Icons.text_fields, color: Colors.white70),
+                      title: const Text('设置',
+                          style: const TextStyle(color: Colors.white70)),
+                      onTap: () {
+                        handleMenu(Actions.mode);
+                      },
+                    ),
+                    new ItemButton(
+                      icon:
+                          const Icon(Icons.brightness_2, color: Colors.white70),
+                      title: const Text('夜间',
+                          style: const TextStyle(color: Colors.white70)),
+                      onTap: () {
+                        handleMenu(Actions.night);
+                      },
+                    ),
+                    new ItemButton(
+                      icon: const Icon(Icons.more_horiz, color: Colors.white70),
+                      title: const Text('更多',
+                          style: const TextStyle(color: Colors.white70)),
+                      onTap: () {
+                        handleMenu(Actions.more);
+                      },
+                    ),
+                  ],
+//        type: BottomNavigationBarType.fixed,
+//        onTap: onTapMenu,
+                ),
               ),
-              buildBottomBar(),
-              buildReadModePannel(),
-            ],
-          ),
+            )
+          ],
         ),
       ),
     );

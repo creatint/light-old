@@ -1,15 +1,17 @@
 import 'dart:async';
-import 'dart:convert';
+
+//import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart';
 import 'package:html/parser.dart' as parser;
 import 'package:html/dom.dart' as dom;
-import 'package:flutter_webview_plugin/flutter_webview_plugin.dart';
+
+//import 'package:flutter_webview_plugin/flutter_webview_plugin.dart';
 import 'package:url_launcher/url_launcher.dart' as urll;
 
-import 'package:light/src/service/file_service.dart';
+//import 'package:light/src/service/file_service.dart';
 import 'package:light/src/view/custom_page_route.dart';
 import 'package:light/src/view/custom_indicator.dart';
 import 'package:light/src/model/tieba_topic.dart';
@@ -72,19 +74,19 @@ class DetailState extends State<Detail> {
     print(post.getAuthor());
     showDialog<DialogAction>(
         context: context,
-        child: new SimpleDialog(
-          title: new Text('操作'),
-          children: <Widget>[
-            new DialogItem(
-              icon: Icons.content_copy,
-              color: theme.primaryColor,
-              text: '复制',
-              onPressed: () {
-                Navigator.pop(context, DialogAction.copy);
-              },
-            )
-          ],
-        )).then<Null>((DialogAction action) {
+        builder: (BuildContext context) => new SimpleDialog(
+              title: new Text('操作'),
+              children: <Widget>[
+                new DialogItem(
+                  icon: Icons.content_copy,
+                  color: theme.primaryColor,
+                  text: '复制',
+                  onPressed: () {
+                    Navigator.pop(context, DialogAction.copy);
+                  },
+                )
+              ],
+            )).then<Null>((DialogAction action) {
       if (action == null) {
         print('无操作');
         return;
@@ -407,7 +409,7 @@ class PostItem extends StatelessWidget {
   Widget build(BuildContext context) {
     //TODO:样式
 //    TextStyle style = Theme.of(context).textTheme.subhead;
-    TextStyle style = Theme.of(context).textTheme.subhead;
+//    TextStyle style = Theme.of(context).textTheme.subhead;
     return new DecoratedBox(
       decoration: new BoxDecoration(
         border: new Border(

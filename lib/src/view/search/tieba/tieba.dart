@@ -5,19 +5,19 @@ import 'package:flutter/foundation.dart';
 import 'package:http/http.dart';
 import 'package:html/parser.dart' as parser;
 import 'package:html/dom.dart' as dom;
-import 'package:sqflite/sqflite.dart';
+//import 'package:sqflite/sqflite.dart';
 
 import 'package:light/src/view/custom_page_route.dart';
 import 'package:light/src/model/tieba_topic.dart';
 import 'package:light/src/view/search/tieba/detail.dart';
 import 'package:light/src/view/custom_indicator.dart';
-import 'package:light/src/parts/select_bottom_bar.dart';
+//import 'package:light/src/parts/select_bottom_bar.dart';
 
 class Tieba extends StatefulWidget {
   Tieba({@required this.fname, this.hasCollected});
 
   final String fname;
-  bool hasCollected;
+  final bool hasCollected;
 
   @override
   TiebaState createState() => new TiebaState();
@@ -160,7 +160,7 @@ class TiebaState extends State<Tieba> {
   }
 
   ///处理长按事件
-  void handleLongPress(BuildContext, TiebaTopic topic) {
+  void handleLongPress(TiebaTopic topic) {
     print('handleLongPress');
     print(topic);
     if (!inSelect) {
@@ -482,7 +482,7 @@ class TiebaState extends State<Tieba> {
         handleTap(context, topics[index]);
       },
       onLongPress: () {
-        handleLongPress(context, topics[index]);
+        handleLongPress(topics[index]);
       },
     );
   }

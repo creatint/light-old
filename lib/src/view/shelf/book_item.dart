@@ -14,7 +14,7 @@ class BookItem extends StatelessWidget {
   final Book book;
   final bool showReadProgress;
 
-  RegExp regHttp = new RegExp(r'^http');
+  final RegExp regHttp = new RegExp(r'^http');
 
   ///295/405
   List<Widget> buildCover(BuildContext context) {

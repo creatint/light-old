@@ -35,7 +35,7 @@ class Book {
   final String createAt;
   final String updateAt;
 
-  Book.fromMap({@required Map<String, String> map})
+  Book.fromMap({@required Map<String, dynamic> map})
       : assert(null != map),
         title = map['title'],
         description = map['description'],

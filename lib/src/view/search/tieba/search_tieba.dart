@@ -11,7 +11,7 @@ class SearchTieba extends StatefulWidget {
   SearchTieba({
     this.word
   });
-  String word;
+  final String word;
   @override
   SearchTiebaState createState() => new SearchTiebaState(word: word);
 }
@@ -54,7 +54,7 @@ class SearchTiebaState extends State<SearchTieba> {
         .replaceFirst(new RegExp(r'%TIME%'), time.toString());
     print(url);
     get(url).then((response){
-      Map res = JSON.decode(response.body);
+      Map res = json.decode(response.body);
       print(res);
       if (res == null && res.isEmpty) {
         return;
@@ -93,7 +93,7 @@ class SearchTiebaState extends State<SearchTieba> {
         .replaceFirst(new RegExp(r'%TIME%'), time.toString());
     print(url);
     get(url).then((response){
-      Map result = JSON.decode(response.body);
+      Map result = json.decode(response.body);
       print(result);
       if (result == null && result.isEmpty) {
         return;

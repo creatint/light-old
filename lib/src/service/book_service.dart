@@ -1,14 +1,18 @@
 import 'dart:io';
-import 'dart:math';
+//import 'dart:math';
 import 'dart:async';
 import 'dart:convert';
+import 'dart:collection';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:html/parser.dart' show parse;
+import 'package:html/dom.dart' as dom;
+import 'package:html2md/html2md.dart' as hm;
 
 import 'package:epub/epub.dart';
 import 'package:light/src/service/db.dart';
 import 'package:light/src/model/book.dart';
-import 'package:light/src/service/mock_book.dart';
+//import 'package:light/src/service/mock_book.dart';
 import 'package:light/src/parts/selected_list_model.dart';
 import 'package:light/src/service/file_service.dart';
 import 'package:light/src/model/read_mode.dart';
@@ -33,8 +37,8 @@ class BookService {
     if (null == db) {
       throw new Exception('db is null');
     }
-    List<Map> list = await db.query('book');
-    return list.map((Map map) => new Book.fromMap(map: map)).toList();
+    List<Map<String, dynamic>> list = await db.query('book');
+    return list.map((Map<String, dynamic> map) => new Book.fromMap(map: map)).toList();
   }
 
   Future<int> createBook(Book book) async {
@@ -91,7 +95,7 @@ class BookService {
           id: 0,
           type: ReadModeType.color,
           fontColor: const Color(0xff424142),
-          backgroundColor: const Color(0xffffff)),
+          backgroundColor: const Color(0xffffffff)),
       new ReadMode(
         id: 1,
         type: ReadModeType.color,
@@ -118,7 +122,7 @@ class BookService {
           id: 5,
           type: ReadModeType.color,
           fontColor: const Color(0xff3a3931),
-          backgroundColor: const Color(0xff0e9cb)),
+          backgroundColor: const Color(0xffcdd6ba)),
       new ReadMode(
           id: 6,
           type: ReadModeType.color,
@@ -145,190 +149,180 @@ class BookService {
           id: 10,
           type: ReadModeType.texture,
           fontColor: const Color(0xff423d3a),
-          image_uri: 'assets/background/bg1.png'),
+          imageUri: 'assets/background/bg1.png'),
       new ReadMode(
           id: 11,
           type: ReadModeType.texture,
           fontColor: const Color(0xff3a3931),
-          image_uri: 'assets/background/bg2.png'),
+          imageUri: 'assets/background/bg2.png'),
       new ReadMode(
           id: 12,
           type: ReadModeType.texture,
           fontColor: const Color(0xff3a3931),
-          image_uri: 'assets/background/bg3.png'),
+          imageUri: 'assets/background/bg3.png'),
       new ReadMode(
           id: 13,
           type: ReadModeType.texture,
           fontColor: const Color(0xff3a3129),
-          image_uri: 'assets/background/bg4.png'),
+          imageUri: 'assets/background/bg4.png'),
       new ReadMode(
           id: 14,
           type: ReadModeType.texture,
           fontColor: const Color(0xffb5b6b5),
-          image_uri: 'assets/background/bg5.png'),
+          imageUri: 'assets/background/bg5.png'),
 
       //背景图片
       new ReadMode(
           id: 15,
           type: ReadModeType.image,
           fontColor: const Color(0xff1b310e),
-          image_uri: 'assets/background/bg6.png'),
+          imageUri: 'assets/background/bg6.png'),
       new ReadMode(
           id: 16,
           type: ReadModeType.image,
           fontColor: const Color(0xff3a3129),
-          image_uri: 'assets/background/bg7.jpg'),
+          imageUri: 'assets/background/bg7.jpg'),
       new ReadMode(
           id: 17,
           type: ReadModeType.image,
           fontColor: const Color(0xff5e432e),
-          image_uri: 'assets/background/bg8.png'),
+          imageUri: 'assets/background/bg8.png'),
       new ReadMode(
           id: 18,
           type: ReadModeType.image,
           fontColor: const Color(0xff801634),
-          image_uri: 'assets/background/bg9.png'),
+          imageUri: 'assets/background/bg9.png'),
       new ReadMode(
           id: 19,
           type: ReadModeType.image,
           fontColor: const Color(0xffd6a68d),
-          image_uri: 'assets/background/bg10.png'),
+          imageUri: 'assets/background/bg10.png'),
       new ReadMode(
           id: 20,
           type: ReadModeType.image,
           fontColor: const Color(0xff5e432e),
-          image_uri: 'assets/background/bg11.png'),
+          imageUri: 'assets/background/bg11.png'),
     ];
     return list;
   }
 }
 
 class BookDecoder {
-  BookDecoder({@required this.book, @required int sectionSize})
-      : file = new File(book.uri),
-        _sectionSize = sectionSize;
+  BookDecoder(
+      {@required this.book,
+      @required this.type,
+      @required this.file,
+      @required int sectionSize,
+      this.randomAccessFile,
+      this.epubBook,
+      this.chapters,
+      this.catelogs})
+      : _sectionSize = sectionSize;
 
   final Book book;
-  RandomAccessFile randomAccessFile;
+  final BookType type;
+  final File file;
+  final RandomAccessFile randomAccessFile;
+  List<int> bytes;
+  EpubBook epubBook;
   int byteSize = 1110; //每页字节数
   int position = 0; //起始位置
   int currPN = 1; //当前页码
   int maxPN; //最大页码
-  int _maxLength; //text文本最大长度
-  final int _sectionSize;
+  int _maxLength = 0; //text文本最大长度
+  int _sectionSize;
   int _maxSectionOffset;
-  Future<String> prevContent;
-  Future<String> currContent;
-  Future<String> nextContent;
+  Future<String> prevSection;
+  Future<String> currSection;
+  Future<String> nextSection;
+  SplayTreeMap<int, EpubChapter> chapters;
+  SplayTreeMap<int, Section> sections = new SplayTreeMap<int, Section>();
+  int sectionsMaxLength = 20;
+  List<Catelog> catelogs;
+  String cache;
 
-  File file;
-  List<String> chapters;
-
-  void decode() async {
-    switch (book.bookType) {
-      case BookType.txt:
-        decodeText();
-        break;
-      case BookType.epub:
-        decodeEpub();
-        break;
-      case BookType.pdf:
-        break;
-      case BookType.url:
-        break;
-      case BookType.urls:
-        break;
-    }
-  }
-
-  decodeText() {}
-
-  void decodeEpub() async {
-    List<int> bytes = await file.readAsBytes();
-    EpubBook epubBook = await EpubReader.readBook(bytes);
-  }
-
-  Future<String> getContent(int pn) async {
-    if (pn < 1) return null;
-    if (pn > maxPN) return null;
-    print('flag0');
-    print('getContent pn=$pn');
-    print(book.bookType);
-    print('getContent pn=$pn type=${book.bookType.toString()}');
-    print('getContent pn=$pn type=${book.bookType}');
-    String text = '';
-    switch (book.bookType) {
-      case BookType.txt:
-        print('getContent is text');
-        if (null == randomAccessFile) {
-          randomAccessFile = file.openSync(mode: FileMode.READ);
-        }
-        randomAccessFile.setPositionSync((pn - 1) * byteSize);
-        List<int> bytes = randomAccessFile.readSync(byteSize);
-        text = utf8.decode(bytes);
-        break;
-      case BookType.epub:
-        break;
-      case BookType.pdf:
-        break;
-      case BookType.url:
-        break;
-      case BookType.urls:
-        break;
-    }
-    return text;
-  }
-
-  Future<String> getPage(int pn) {
-    print('getPage pn=$pn currPN=$currPN');
-    if (pn == currPN) {
-      print('flag1');
-      if (null == currContent) {
-        print('flag2');
-        currContent = getContent(pn);
+  ///异步初始化书籍文件
+  static Future<BookDecoder> init(
+      {@required Book book, @required int sectionSize}) async {
+    print('init book decoder');
+    File file = new File(book.uri);
+    try {
+      switch (book.bookType) {
+        case BookType.txt:
+          print('book type is text');
+          BookType type = BookType.txt;
+          RandomAccessFile randomAccessFile =
+              file.openSync(mode: FileMode.READ);
+          return new BookDecoder(
+              book: book,
+              type: type,
+              file: file,
+              sectionSize: sectionSize,
+              randomAccessFile: randomAccessFile);
+          break;
+        case BookType.epub:
+          print('book type is epub');
+          SplayTreeMap<int, EpubChapter> chapters =
+              new SplayTreeMap<int, EpubChapter>();
+          BookType type = BookType.epub;
+          List<int> bytes = file.readAsBytesSync();
+          EpubBook epub;
+          List<Catelog> catelogs = <Catelog>[];
+          try {
+            epub = await EpubReader.readBook(bytes);
+          } catch (e) {
+            print('error... $e');
+          }
+          if (null == epub) {
+            print('获取epub失败');
+          }
+          int i = 0;
+          epub.Chapters.forEach((EpubChapter chapter) {
+            chapters[i] = chapter;
+            Catelog catelog = new Catelog(title: chapter.Title, offset: i);
+            if (chapter.SubChapters.length > 0) {
+              chapter.SubChapters.forEach((EpubChapter subChapter) {
+                i++;
+                chapters[i] = subChapter;
+                catelog.subCatelogs
+                    .add(new Catelog(title: subChapter.Title, offset: i));
+              });
+            }
+            catelogs.add(catelog);
+            i++;
+          });
+          return new BookDecoder(
+              book: book,
+              type: type,
+              file: file,
+              sectionSize: sectionSize,
+              epubBook: epub,
+              chapters: chapters,
+              catelogs: catelogs);
+          break;
+        case BookType.pdf:
+          break;
+        case BookType.url:
+          break;
+        case BookType.urls:
+          break;
       }
-    } else if (pn == (currPN + 1)) {
-      currPN = pn;
-      prevContent = currContent;
-      currContent = nextContent;
-      nextContent = getContent(pn + 1);
-    } else if (pn == (currPN - 1)) {
-      currPN = pn;
-      nextContent = currContent;
-      currContent = prevContent;
-      prevContent = getContent(pn - 1);
-    } else {
-      currPN = pn;
-      prevContent = getContent(pn - 1);
-      currContent = getContent(pn);
-      nextContent = getContent(pn + 1);
+      return null;
+    } catch (e) {
+      print('error!!!!: $e');
+      return null;
     }
-    return currContent;
   }
 
-  Future<String> getPrevPage() {
-    return prevContent;
-  }
-
-  Future<String> getNextPage() {
-    return nextContent;
-  }
-
-  int getMaxLength() {
-    return randomAccessFile.lengthSync();
-  }
-
-  void initBook() {}
-
+  ///获取text文件字节总长度
+  ///获取epub文件总章数
   int get maxLength {
-    switch (book.bookType) {
+    switch (type) {
       case BookType.txt:
-        if (null == randomAccessFile) {
-          randomAccessFile = file.openSync(mode: FileMode.READ);
-          _maxLength = randomAccessFile.lengthSync();
-        }
+        _maxLength = randomAccessFile.lengthSync();
         break;
       case BookType.epub:
+        _maxLength = chapters.length;
         break;
       case BookType.pdf:
         break;
@@ -340,32 +334,17 @@ class BookDecoder {
     return _maxLength;
   }
 
+  ///txt：字块最大偏移数
   int get maxSectionOffset {
     if (null != _maxSectionOffset) {
       return _maxSectionOffset;
     }
-    _maxSectionOffset = (maxLength / _sectionSize).ceil();
-    return _maxSectionOffset;
-  }
-
-  ///获取字块
-  String getSection({int offset, int length}) {
-//  print('bookService getSection');
-    String text = '';
-    switch (book.bookType) {
+    switch (type) {
       case BookType.txt:
-        if (null == randomAccessFile) {
-          randomAccessFile = file.openSync(mode: FileMode.READ);
-          _maxLength = randomAccessFile.lengthSync();
-        }
-        if (offset * length >= maxLength) {
-          return null;
-        }
-        randomAccessFile.setPositionSync(offset * length);
-        List<int> bytes = randomAccessFile.readSync(length);
-        text = utf8.decode(bytes);
+        _maxSectionOffset = (maxLength / _sectionSize).ceil();
         break;
       case BookType.epub:
+        _maxSectionOffset = chapters.length;
         break;
       case BookType.pdf:
         break;
@@ -374,13 +353,98 @@ class BookDecoder {
       case BookType.urls:
         break;
     }
-    return text;
+    return _maxSectionOffset;
+  }
+
+  ///获取字块
+  Section getSection({int offset, int length}) {
+//  print('bookService getSection');
+    if (sections.containsKey(offset)) return sections[offset];
+    String title;
+    String text = '';
+    switch (book.bookType) {
+      case BookType.txt:
+        if (offset * length >= maxLength) {
+          return null;
+        }
+        randomAccessFile.setPositionSync(offset * length);
+        bytes = randomAccessFile.readSync(length);
+        text = utf8.decode(bytes);
+        if (null != cache) {
+          text = cache + text;
+          cache = null;
+        }
+//        ///优化缩进
+//        text = text.replaceAll(new RegExp(r'[ ]{4,}'),'    ');
+//        if (new RegExp(r'[ ]+([^\r\n\t]+)$', multiLine: false).hasMatch(text)) {
+//          print('match: ' +
+//              new RegExp(r'[ ]+([^\s]+)$')
+//                  .firstMatch(text)
+//                  ?.group(1)
+//                  .toString());
+//          text = text.replaceAllMapped(new RegExp(r'[^\r\n\t]*[ ]+([^\s]+)$', multiLine: false), (match) {
+//            if (null != match) {
+//              cache = match.group(0);
+//              return '';
+//            }
+//          });
+//        }
+        break;
+      case BookType.epub:
+        if (offset >= chapters.length) {
+          return null;
+        }
+        title = chapters[offset].Title;
+        dom.Document document = parse(chapters[offset].HtmlContent);
+        dom.Element body = document.body;
+        String mdString = hm.convert(body.outerHtml);
+        text = mdString;
+        ///删除空行
+        text = text.replaceAll(new RegExp(r'[\r\n\t]+'), '\r\n');
+
+        break;
+      case BookType.pdf:
+        break;
+      case BookType.url:
+        break;
+      case BookType.urls:
+        break;
+    }
+//        ///删除空行
+    text = text.trim();
+//    text = '$offset abcdefgABCDEFG';
+//        text = text.replaceAll(new RegExp(r'[\r\n\t]+'), '\r\n');
+    Section section = new Section(offset: offset, title: title, text: text);
+    sections[offset] = section;
+//    if (sections.length > sectionsMaxLength) {
+//      sections.remove(sections.firstKeyAfter(0));
+//    }
+    return section;
   }
 
   void close() {
-    randomAccessFile.close();
-    file = null;
+    if (randomAccessFile != null) randomAccessFile.close();
   }
+}
+
+///目录，subCatelog
+class Catelog {
+  Catelog({@required this.title, @required this.offset});
+
+  final String title;
+  final int offset;
+  List<Catelog> subCatelogs = <Catelog>[];
+
+  int get count => subCatelogs.length;
+}
+
+class Section {
+  Section({this.offset, this.title, @required this.text, this.imageUris});
+
+  final int offset;
+  final String title;
+  final String text;
+  final List<String> imageUris;
 }
 
 ///判断文件是否是电子书资源

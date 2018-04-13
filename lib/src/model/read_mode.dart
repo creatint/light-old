@@ -1,7 +1,7 @@
-import 'dart:io';
-import 'dart:convert';
+//import 'dart:io';
+//import 'dart:convert';
 import 'package:flutter/material.dart';
-import 'package:light/src/service/file_service.dart';
+//import 'package:light/src/service/file_service.dart';
 
 ///閲讀主題類型
 ///[color]純色背景
@@ -16,7 +16,7 @@ class ReadMode {
     this.type,
     this.fontColor,
     this.backgroundColor,
-    this.image_uri,
+    this.imageUri,
   });
 
   ///用於解析從數據庫讀取的數據
@@ -26,13 +26,13 @@ class ReadMode {
             .firstWhere((v) => v.toString() == 'ReadModeType.' + map['type']),
         this.fontColor = new Color(int.parse(map['font_color'])),
         this.backgroundColor = map['background_color'],
-        this.image_uri = map['image_uri'];
+        this.imageUri = map['image_uri'];
 
   final int id;
   final ReadModeType type;
   final Color fontColor;
   final Color backgroundColor;
-  final String image_uri;
+  final String imageUri;
 
   BoxFit get fit => type == ReadModeType.image
       ? BoxFit.cover
@@ -42,8 +42,8 @@ class ReadMode {
       ? ImageRepeat.noRepeat
       : type == ReadModeType.texture ? ImageRepeat.repeat : null;
 
-  DecorationImage get image => null != image_uri
+  DecorationImage get image => null != imageUri
       ? new DecorationImage(
-          fit: fit, repeat: repeat, image: new AssetImage(image_uri))
+          fit: fit, repeat: repeat, image: new AssetImage(imageUri))
       : null;
 }

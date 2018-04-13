@@ -1,19 +1,18 @@
-import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
-import 'package:flutter_webview_plugin/flutter_webview_plugin.dart';
+//import 'package:flutter_webview_plugin/flutter_webview_plugin.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:light/src/service/config.dart';
 import 'package:light/src/service/db.dart';
-import 'package:light/src/service/initial.dart';
+//import 'package:light/src/service/initial.dart';
 import 'package:light/src/view/home.dart';
-import 'package:light/src/view/search/tieba/tieba.dart';
-import 'package:light/src/view/search/tieba/detail.dart';
-import 'package:light/src/model/tieba_topic.dart';
-import 'package:light/src/view/chat/chat_screen.dart';
-import 'package:light/src/view/shelf/import_book.dart';
+//import 'package:light/src/view/search/tieba/tieba.dart';
+//import 'package:light/src/view/search/tieba/detail.dart';
+//import 'package:light/src/model/tieba_topic.dart';
+//import 'package:light/src/view/chat/chat_screen.dart';
+//import 'package:light/src/view/shelf/import_book.dart';
 
 final ThemeData _kGalleryLightTheme = new ThemeData(
   brightness: Brightness.light,
@@ -51,7 +50,7 @@ class _AppState extends State<App> {
     return new MaterialApp(
       title: 'Light',
       debugShowCheckedModeBanner: false,
-//      theme: _useLightTheme ? _kGalleryLightTheme : _kGalleryDarkTheme,
+      theme: _useLightTheme ? _kGalleryLightTheme : _kGalleryDarkTheme,
       routes: <String, WidgetBuilder>{
 //        '/': (BuildContext context) => new ImportBook(
 //              key: new Key('start'),

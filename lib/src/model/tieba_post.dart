@@ -15,7 +15,7 @@ class TiebaPost {
 
   TiebaPost.json(
       {@required this.raw, this.datetime, this.avatarUrl, this.referer}) {
-    data = JSON.decode(raw);
+    data = json.decode(raw);
     author = data['author'];
     content = data['content']['content'];
     flour = data['content']['post_no'];

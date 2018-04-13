@@ -17,14 +17,14 @@ enum SearchType { online, local }
 class Search extends StatefulWidget {
   Search(
       {@required Key key,
-      @required this.searchType: SearchType.online,
+      this.searchType: SearchType.online,
       this.isSearched: false,
-      this.word: null})
+      this.word})
       : super(key: key);
 
   final SearchType searchType;
   final bool isSearched; //搜索过的页面搜索时不再跳转路由
-  String word; //word不为null，则为结果页面
+  final String word; //word不为null，则为结果页面
 
   @override
   SearchState createState() =>
@@ -42,7 +42,7 @@ class SearchState extends State<Search> with SingleTickerProviderStateMixin {
   List<String> suggestions = <String>[]; //搜索建议
   List<String> histories = <String>[]; //搜索历史
   List<Book> recommends = <Book>[]; //资源推荐
-  List<Book> results = null; //搜索结果
+  List<Book> results; //搜索结果
   AnimationController controller;
   Animation<double> animation;
   Widget defaultCover = new CircleAvatar(
@@ -133,7 +133,7 @@ class SearchState extends State<Search> with SingleTickerProviderStateMixin {
         Match matche = reg.firstMatch(response.body);
         if (matche != null) {
           String str = matche.group(1);
-          var res = JSON.decode(str);
+          var res = json.decode(str);
           if (res['s'] != null) {
             if (textEditingController.text.isNotEmpty) {
               print('handleChanged2 text=$text isEmpty=${text.isEmpty}');
