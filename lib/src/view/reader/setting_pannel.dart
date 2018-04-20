@@ -4,7 +4,7 @@ import '../parts/label.dart';
 import '../parts/custom_button.dart';
 import 'package:light/src/model/read_mode.dart';
 
-enum Settings { fontSize, lineHeight }
+enum Settings { fontSize, lineHeight, mode }
 
 typedef void HandleSettings(Settings setting, dynamic);
 
@@ -20,12 +20,16 @@ class SettingPannel extends StatefulWidget {
   final int currentReadModeId;
 
   @override
-  _SettingPannelState createState() => new _SettingPannelState();
+  _SettingPannelState createState() =>
+      new _SettingPannelState(currentReadModeId: currentReadModeId);
 }
 
 class _SettingPannelState extends State<SettingPannel> {
+  _SettingPannelState({Key key, this.currentReadModeId});
+
   ///是否显示更多主题设置
   bool showMoreMode = false;
+  int currentReadModeId;
 
   IndexedWidgetBuilder modeButtonBuilder(ReadModeType type) {
     List<ReadMode> list =
@@ -33,43 +37,57 @@ class _SettingPannelState extends State<SettingPannel> {
     return (BuildContext context, int index) {
       print(list[index]?.id);
       return buildModeButton(list[index]);
-      return new CustomButton(
-        shape: const CircleBorder(),
-        child: new Container(
-          decoration: new BoxDecoration(
-              color: list[index].backgroundColor, image: list[index].image),
-        ),
-        onPressed: () {
-          widget.handleSettings(Settings.fontSize, 2);
-        },
-      );
     };
   }
 
   Widget buildModeButton(ReadMode mode) {
-    print('id=${mode.id} currentId=${widget.currentReadModeId} ${mode.id ==
-        widget.currentReadModeId}');
+    print('id=${mode.id} currentId=$currentReadModeId ${mode.id ==
+        currentReadModeId}');
     print(mode.backgroundColor);
-    return new CustomButton(
-      active: mode.id == widget.currentReadModeId,
-      shape: const CircleBorder(),
-      child: new Container(
-        constraints: new BoxConstraints(maxHeight: 60.0, maxWidth: 60.0),
-        margin: mode.id == widget.currentReadModeId
-          ? const EdgeInsets.all(3.0)
-            : null,
-        decoration: new BoxDecoration(
-            shape: BoxShape.circle,
+    return new Container(
+      padding: const EdgeInsets.only(right: 8.0, top: 4.0, bottom: 4.0),
+      height: 48.0,
+      width: 48.0,
+      child: new CustomButton(
+        active: mode.id == currentReadModeId,
+        shape: const CircleBorder(),
+        child: new Container(
+          padding: const EdgeInsets.all(0.0),
+          constraints: new BoxConstraints(maxHeight: 40.0, maxWidth: 40.0),
+          margin: mode.id == currentReadModeId
+              ? const EdgeInsets.all(3.0)
+//            ? const EdgeInsets.symmetric(vertical: 12.0, horizontal: 4.0)
+//            ? const EdgeInsets.symmetric(vertical: 8.0, horizontal: 0.0)
+              : null,
+          decoration: new BoxDecoration(
+              shape: BoxShape.circle,
 //            borderRadius: mode.id == widget.currentReadModeId
 //                ? new BorderRadius.all(new Radius.circular(15.0))
 //                : null,
-            color: mode.backgroundColor,
-            image: mode.image),
+              color: mode.backgroundColor,
+              image: mode.buttonImage),
+        ),
+        onPressed: () {
+          handleSettings(Settings.mode, mode.id);
+        },
       ),
-      onPressed: () {
-        widget.handleSettings(Settings.fontSize, 2);
-      },
     );
+  }
+
+  ///处理设置
+  void handleSettings(Settings setting, dynamic value) {
+    print('handleSettings@SettingPannel value=$value');
+    switch (setting) {
+      case Settings.mode:
+        if (value >= 0) {
+          setState(() {
+            currentReadModeId = value;
+          });
+          widget.handleSettings(setting, value);
+        }
+        break;
+      default:
+    }
   }
 
   void handleShowMoreMode() {
@@ -94,7 +112,8 @@ class _SettingPannelState extends State<SettingPannel> {
                     )),
               ),
               new Container(
-                  padding: const EdgeInsets.only(left: 16.0, right: 16.0, bottom: 16.0),
+                  padding: const EdgeInsets.only(
+                      left: 16.0, right: 16.0, bottom: 16.0),
                   color: Colors.black87,
                   child: new Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -105,6 +124,7 @@ class _SettingPannelState extends State<SettingPannel> {
                         new Container(
                           constraints: new BoxConstraints(maxHeight: 60.0),
                           child: new GridView.builder(
+                              key: new Key(currentReadModeId.toString()),
                               padding: const EdgeInsets.all(0.0),
                               gridDelegate:
                                   new SliverGridDelegateWithMaxCrossAxisExtent(
@@ -123,6 +143,7 @@ class _SettingPannelState extends State<SettingPannel> {
                         new Container(
                           constraints: new BoxConstraints(maxHeight: 50.0),
                           child: new GridView.builder(
+                              key: new Key(currentReadModeId.toString()),
                               padding: const EdgeInsets.all(0.0),
                               gridDelegate:
                                   new SliverGridDelegateWithMaxCrossAxisExtent(
@@ -141,6 +162,7 @@ class _SettingPannelState extends State<SettingPannel> {
                         new Container(
                           constraints: new BoxConstraints(maxHeight: 50.0),
                           child: new GridView.builder(
+                              key: new Key(currentReadModeId.toString()),
                               padding: const EdgeInsets.all(0.0),
                               gridDelegate:
                                   new SliverGridDelegateWithMaxCrossAxisExtent(

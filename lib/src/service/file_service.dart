@@ -135,3 +135,35 @@ Image getImage(String uri) {
   }
   return null;
 }
+
+String charsetDetector(RandomAccessFile file) {
+  String charset = 'utf8';
+  List<int> bytes = file.readSync(3);
+  int length = file.lengthSync();
+  bool isLatin1 = true;
+  bool isUtf8 = true;
+  if (bytes[0] == 0xEF && bytes[1] == 0xBB && bytes[2] == 0xBF) {
+    isLatin1 = false;
+  } else {
+    //不带bom头，可能是gbk,latin1,utf8,big5
+    bytes = file.readSync(100 > length ? length : 100);
+    int i = 0;
+    do {
+      if (bytes[i] > 127) {
+        isLatin1 = false;
+      }
+      if ((bytes[i] & 0xC0) != 0x80) {
+        isUtf8 = false;
+      }
+      i++;
+    } while (i < bytes.length);
+  }
+  if (!isLatin1 && !isLatin1) {
+    charset = 'gbk';
+  } else if (!isLatin1 && isUtf8) {
+    charset = 'utf8';
+  } else if (isLatin1 && !isUtf8) {
+    charset = 'latin1';
+  }
+  return charset;
+}

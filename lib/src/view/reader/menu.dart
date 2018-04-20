@@ -41,7 +41,6 @@ class MenuState extends State<Menu> {
     print('handleModeChange');
   }
 
-  void handleSettings(Settings setting, dynamic value) {}
 
   void handleMenu(Actions action) {
     switch (action) {
@@ -96,7 +95,7 @@ class MenuState extends State<Menu> {
                         new SettingPannel(
                           readModeList: widget.readModeList,
                           currentReadModeId: widget.currentReadModeId,
-                          handleSettings: handleSettings,
+                          handleSettings: widget.handleSettings,
                         )))
             .then((bool value) {
           if (value == true) {
@@ -153,6 +152,7 @@ class MenuState extends State<Menu> {
             new Offstage(
               offstage: !showHeader,
               child: new AppBar(
+                elevation: 0.0,
                 backgroundColor: Colors.black87,
                 leading: new IconButton(
                     icon: const Icon(Icons.arrow_back),

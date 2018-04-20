@@ -46,4 +46,8 @@ class ReadMode {
       ? new DecorationImage(
           fit: fit, repeat: repeat, image: new AssetImage(imageUri))
       : null;
+  DecorationImage get buttonImage => null != imageUri
+      ? new DecorationImage(
+      fit: fit, repeat: ImageRepeat.repeat, image: new AssetImage(imageUri))
+      : null;
 }

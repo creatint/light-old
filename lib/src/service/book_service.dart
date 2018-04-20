@@ -1,10 +1,12 @@
 import 'dart:io';
+
 //import 'dart:math';
 import 'dart:async';
 import 'dart:convert';
 import 'dart:collection';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:html/parser.dart' show parse;
 import 'package:html/dom.dart' as dom;
 import 'package:html2md/html2md.dart' as hm;
@@ -12,6 +14,7 @@ import 'package:html2md/html2md.dart' as hm;
 import 'package:epub/epub.dart';
 import 'package:light/src/service/db.dart';
 import 'package:light/src/model/book.dart';
+
 //import 'package:light/src/service/mock_book.dart';
 import 'package:light/src/parts/selected_list_model.dart';
 import 'package:light/src/service/file_service.dart';
@@ -38,7 +41,9 @@ class BookService {
       throw new Exception('db is null');
     }
     List<Map<String, dynamic>> list = await db.query('book');
-    return list.map((Map<String, dynamic> map) => new Book.fromMap(map: map)).toList();
+    return list
+        .map((Map<String, dynamic> map) => new Book.fromMap(map: map))
+        .toList();
   }
 
   Future<int> createBook(Book book) async {
@@ -212,17 +217,18 @@ class BookDecoder {
       {@required this.book,
       @required this.type,
       @required this.file,
-      @required int sectionSize,
       this.randomAccessFile,
       this.epubBook,
       this.chapters,
-      this.catelogs})
-      : _sectionSize = sectionSize;
+      this.catelogs,
+      this.content});
 
   final Book book;
   final BookType type;
   final File file;
   final RandomAccessFile randomAccessFile;
+  static const platform = const MethodChannel('light.yotaku.cn/system');
+  String content; //全部内容
   List<int> bytes;
   EpubBook epubBook;
   int byteSize = 1110; //每页字节数
@@ -237,13 +243,13 @@ class BookDecoder {
   Future<String> nextSection;
   SplayTreeMap<int, EpubChapter> chapters;
   SplayTreeMap<int, Section> sections = new SplayTreeMap<int, Section>();
-  int sectionsMaxLength = 20;
+
+//  int sectionsMaxLength = 20;
   List<Catelog> catelogs;
   String cache;
 
   ///异步初始化书籍文件
-  static Future<BookDecoder> init(
-      {@required Book book, @required int sectionSize}) async {
+  static Future<BookDecoder> init({@required Book book}) async {
     print('init book decoder');
     File file = new File(book.uri);
     try {
@@ -253,11 +259,36 @@ class BookDecoder {
           BookType type = BookType.txt;
           RandomAccessFile randomAccessFile =
               file.openSync(mode: FileMode.READ);
+          String codeType = charsetDetector(randomAccessFile);
+          print('charset is $codeType');
+          List<int> bytes = file.readAsBytesSync();
+          String content;
+          try {
+            switch (codeType) {
+              case 'gbk':
+//                content = 'gbk';
+                content = await platform
+                    .invokeMethod('decodeGbkFile', {'path': book.uri});
+                content +=content += content += content+= content+= content+= content;
+                break;
+              case 'utf8':
+                content = utf8.decode(bytes, allowMalformed: true);
+                break;
+              case 'latin1':
+                content = latin1.decode(bytes);
+                break;
+            }
+          } catch (e) {
+            print('Error: $e');
+          }
+//          String content = file.readAsStringSync(encoding: latin1);
+//          String content = file.readAsStringSync(encoding: utf8);
+//          String content = file.readAsStringSync(encoding: gb2312);
           return new BookDecoder(
               book: book,
               type: type,
               file: file,
-              sectionSize: sectionSize,
+              content: content,
               randomAccessFile: randomAccessFile);
           break;
         case BookType.epub:
@@ -295,7 +326,6 @@ class BookDecoder {
               book: book,
               type: type,
               file: file,
-              sectionSize: sectionSize,
               epubBook: epub,
               chapters: chapters,
               catelogs: catelogs);
@@ -319,7 +349,8 @@ class BookDecoder {
   int get maxLength {
     switch (type) {
       case BookType.txt:
-        _maxLength = randomAccessFile.lengthSync();
+//        _maxLength = randomAccessFile.lengthSync();
+        _maxLength = content?.length ?? 0;
         break;
       case BookType.epub:
         _maxLength = chapters.length;
@@ -358,22 +389,33 @@ class BookDecoder {
 
   ///获取字块
   Section getSection({int offset, int length}) {
-//  print('bookService getSection');
+    print('getSection@bookService offset=$offset length=$length');
     if (sections.containsKey(offset)) return sections[offset];
     String title;
     String text = '';
+    bool isLast = false;
     switch (book.bookType) {
       case BookType.txt:
-        if (offset * length >= maxLength) {
+        if (!(offset >= 0) || !(length > 0)) {
           return null;
         }
-        randomAccessFile.setPositionSync(offset * length);
-        bytes = randomAccessFile.readSync(length);
-        text = utf8.decode(bytes);
-        if (null != cache) {
-          text = cache + text;
-          cache = null;
+        if (offset >= maxLength) {
+          return null;
         }
+        if (offset + length >= maxLength) {
+          text = content.substring(offset, maxLength);
+          isLast = true;
+        } else {
+          text = content.substring(offset, offset + length);
+        }
+//        randomAccessFile.setPositionSync(offset * length);
+//        randomAccessFile.setPositionSync(offset);
+//        bytes = randomAccessFile.readSync(length);
+//        text = utf8.decode(bytes);
+//        if (null != cache) {
+//          text = cache + text;
+//          cache = null;
+//        }
 //        ///优化缩进
 //        text = text.replaceAll(new RegExp(r'[ ]{4,}'),'    ');
 //        if (new RegExp(r'[ ]+([^\r\n\t]+)$', multiLine: false).hasMatch(text)) {
@@ -399,6 +441,7 @@ class BookDecoder {
         dom.Element body = document.body;
         String mdString = hm.convert(body.outerHtml);
         text = mdString;
+
         ///删除空行
         text = text.replaceAll(new RegExp(r'[\r\n\t]+'), '\r\n');
 
@@ -411,11 +454,13 @@ class BookDecoder {
         break;
     }
 //        ///删除空行
-    text = text.trim();
+//    text = text.trim();
 //    text = '$offset abcdefgABCDEFG';
 //        text = text.replaceAll(new RegExp(r'[\r\n\t]+'), '\r\n');
-    Section section = new Section(offset: offset, title: title, text: text);
-    sections[offset] = section;
+    print(text);
+    Section section =
+        new Section(offset: offset, title: title, text: text, isLast: isLast);
+//    sections[offset] = section;
 //    if (sections.length > sectionsMaxLength) {
 //      sections.remove(sections.firstKeyAfter(0));
 //    }
@@ -439,12 +484,27 @@ class Catelog {
 }
 
 class Section {
-  Section({this.offset, this.title, @required this.text, this.imageUris});
+  Section(
+      {this.offset,
+      this.title,
+      @required this.text,
+      this.imageUris,
+      this.isLast: false});
 
   final int offset;
   final String title;
-  final String text;
+  String text;
   final List<String> imageUris;
+  final bool isLast;
+
+  bool get isNotEmpty => null != text ? text.isNotEmpty : false;
+
+  bool get IsEmpty => null != text ? text.isEmpty : true;
+
+  @override
+  int get hash => offset;
+
+  operator == (sec) => this.offset == sec.offset;
 }
 
 ///判断文件是否是电子书资源
@@ -462,4 +522,28 @@ bool isBook(dynamic data) {
     return isBook(getType(data));
   }
   return false;
+}
+
+
+
+///阅读记录
+///页面Size、fontSize、lineHeight
+class Record {
+  Record({this.key, this.height, this.width, this.fontSize, this.lineHeight});
+
+  String key;
+
+  double height;
+  double width;
+  double fontSize;
+  double lineHeight;
+
+  Map<int, Map<int, int>> _records = <int, Map<int, int>>{};
+
+  bool containsKey(int key) => _records.containsKey(key);
+
+  operator [](int index) => _records[index];
+
+  @override
+  String toString() => _records.toString();
 }

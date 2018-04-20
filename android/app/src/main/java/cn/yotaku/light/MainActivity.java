@@ -17,6 +17,11 @@ import io.flutter.plugin.common.MethodChannel;
 import io.flutter.plugin.common.MethodChannel.MethodCallHandler;
 import io.flutter.plugin.common.MethodChannel.Result;
 
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.InputStreamReader;
+
 public class MainActivity extends FlutterActivity {
     private static final String CHANNEL = "light.yotaku.cn/system";
 
@@ -40,6 +45,14 @@ public class MainActivity extends FlutterActivity {
                         } else if (call.method.equals("openApplicationSettings")) {
                             boolean res = openApplicationSettings();
                             result.success(res);
+                        } else if (call.method.equals("decodeGbkFile")) {
+//                            result.success(decodeGbkFile(call.argument("path")));
+//                            String str = decodeGbkFile(call.argument("path"));
+//                            String str = readFile("hahahaha");
+//                            System.out.print(call.argument("path").toString());
+                            String path = call.argument("path");
+                            String str = readFile(path);
+                            result.success(str);
                         } else {
                             result.notImplemented();
                         }
@@ -61,6 +74,40 @@ public class MainActivity extends FlutterActivity {
         }
 
         return batteryLevel;
+    }
+
+    private String readFile(String path) {
+        String result=null;
+        try {
+            File f=new File(path);
+            int length=(int)f.length();
+            byte[] buff=new byte[length];
+            FileInputStream fin=new FileInputStream(f);
+            fin.read(buff);
+            fin.close();
+            result=new String(buff,"gbk");
+        }catch (Exception e){
+            return e.getMessage();
+        }
+        return result;
+    }
+
+    private String decodeGbkFile(String path) {
+        try {
+            String content = "";
+//            File file = new File(path);
+//            InputStreamReader read = new InputStreamReader(new FileInputStream(file),"gbk");
+//            BufferedReader br = new BufferedReader(read);
+//            String str = "";
+//            while (null != (str = br.readLine())) {
+//                content = content + str;
+//            }
+//            br.close();
+//            return path;
+            return content;
+        } catch (Exception e) {
+            return e.getMessage();
+        }
     }
 
     private boolean openApplicationSettings() {

@@ -3,16 +3,16 @@ import 'package:flutter/material.dart';
 class CustomButton extends StatelessWidget {
   CustomButton(
       {Key key,
-        this.title,
-        this.shape,
-        this.onPressed,
-        this.borderColor,
-        this.splashColor,
-        this.color,
-        this.child,
-        this.width,
-        this.iconData,
-        this.active: false});
+      this.title,
+      this.shape,
+      this.onPressed,
+      this.borderColor,
+      this.splashColor,
+      this.color,
+      this.child,
+      this.width,
+      this.iconData,
+      this.active: false});
 
   final String title;
   final ShapeBorder shape;
@@ -29,7 +29,9 @@ class CustomButton extends StatelessWidget {
   Widget build(BuildContext context) {
     return new Container(
         constraints: new BoxConstraints(maxWidth: width ?? 40.0),
-        margin: const EdgeInsets.symmetric(horizontal: 8.0),
+//        margin: const EdgeInsets.symmetric(horizontal: 8.0),
+//        margin: const EdgeInsets.symmetric(horizontal: 0.0),
+//        margin: const EdgeInsets.all(8.0),
         child: new OutlineButton(
           padding: const EdgeInsets.all(0.0),
           shape: shape ?? const StadiumBorder(),
@@ -41,14 +43,14 @@ class CustomButton extends StatelessWidget {
           onPressed: onPressed,
           child: iconData != null
               ? new Icon(
-            iconData,
-            color: Theme.of(context).accentIconTheme.color,
-          )
+                  iconData,
+                  color: Theme.of(context).accentIconTheme.color,
+                )
               : (child ??
-              new Text(
-                title,
-                style: Theme.of(context).accentTextTheme.button,
-              )),
+                  new Text(
+                    title,
+                    style: Theme.of(context).accentTextTheme.button,
+                  )),
         ));
   }
 }

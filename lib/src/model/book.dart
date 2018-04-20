@@ -8,18 +8,19 @@ import 'package:light/src/service/file_service.dart';
 enum BookType { txt, epub, pdf, url, urls }
 
 class Book {
-  Book({@required this.title,
-    this.description,
-    this.coverUri,
-    this.uri,
-    this.type,
-    this.createAt,
-    this.updateAt});
+  Book(
+      {@required this.title,
+      this.description,
+      this.coverUri,
+      this.uri,
+      this.type,
+      this.createAt,
+      this.updateAt});
 
   Book.fromEntity({@required FileSystemEntity entity})
       : assert(null != entity),
         title =
-        new RegExp(r'([^/]+)\.[^./]+$').firstMatch(entity.path).group(1),
+            new RegExp(r'([^/]+)\.[^./]+$').firstMatch(entity.path).group(1),
         description = null,
         coverUri = null,
         uri = entity.path,
@@ -49,8 +50,7 @@ class Book {
   String toString() => '{title: $title, type: $type, uri: $uri}\n';
 
 //  BookType get bookType => BookType.values.firstWhere((t) => t.toString() == this.type);
-  BookType get bookType =>
-      BookType.values.firstWhere((t) {
+  BookType get bookType => BookType.values.firstWhere((t) {
 //        print(t.toString());
 //        print(this.type);
         return t.toString() == 'BookType.' + this.type;
@@ -70,6 +70,6 @@ class Book {
 
 BookType getBookType(FileSystemEntity entity) {
   String suffix = getSuffix(entity);
-  return BookType.values.firstWhere((t) =>
-  t.toString() == 'BookType.' + suffix);
+  return BookType.values
+      .firstWhere((t) => t.toString() == 'BookType.' + suffix);
 }

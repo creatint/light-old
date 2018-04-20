@@ -81,7 +81,7 @@ class _ReaderState extends State<Reader> {
     super.initState();
     SystemChrome.setEnabledSystemUIOverlays([]);
     print('Reader initState');
-    bookDecoder = BookDecoder.init(book: widget.book, sectionSize: sectionSize);
+    bookDecoder = BookDecoder.init(book: widget.book);
     readModeList = bookService.getReadModes();
     currentReadModeId = widget.prefs.getInt('readModeId') ?? 16;
   }
