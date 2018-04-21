@@ -34,30 +34,36 @@ public class MainActivity extends FlutterActivity {
                 new MethodCallHandler() {
                     @Override
                     public void onMethodCall(MethodCall call, Result result) {
-                        if (call.method.equals("getBatteryLevel")) {
-                            int batteryLevel = getBatteryLevel();
+                        try {
+                            if (call.method.equals("getBatteryLevel")) {
+                                int batteryLevel = getBatteryLevel();
 
-                            if (batteryLevel != -1) {
-                                result.success(batteryLevel);
-                            } else {
-                                result.error("UNAVAILABLE", "Battery level not available.", null);
-                            }
-                        } else if (call.method.equals("openApplicationSettings")) {
-                            boolean res = openApplicationSettings();
-                            result.success(res);
-                        } else if (call.method.equals("decodeGbkFile")) {
+                                if (batteryLevel != -1) {
+                                    result.success(batteryLevel);
+                                } else {
+                                    result.error("UNAVAILABLE", "Battery level not available.", null);
+                                }
+                            } else if (call.method.equals("openApplicationSettings")) {
+                                boolean res = openApplicationSettings();
+                                result.success(res);
+                            } else if (call.method.equals("readFile")) {
 //                            result.success(decodeGbkFile(call.argument("path")));
 //                            String str = decodeGbkFile(call.argument("path"));
 //                            String str = readFile("hahahaha");
 //                            System.out.print(call.argument("path").toString());
-                            String path = call.argument("path");
-                            String str = readFile(path);
-                            result.success(str);
-                        } else {
-                            result.notImplemented();
+//                            String path = call.argument("path");
+//                                String res = readFile("hahaha");
+//                                result.success(res);
+                                result.success("hahaha");
+                            } else {
+                                result.notImplemented();
+                            }
+                        } catch (Exception e) {
+                            System.out.println("Error: " + e.getMessage());
                         }
                     }
                 }
+
         );
     }
 
@@ -77,38 +83,24 @@ public class MainActivity extends FlutterActivity {
     }
 
     private String readFile(String path) {
-        String result=null;
-        try {
-            File f=new File(path);
-            int length=(int)f.length();
-            byte[] buff=new byte[length];
-            FileInputStream fin=new FileInputStream(f);
-            fin.read(buff);
-            fin.close();
-            result=new String(buff,"gbk");
-        }catch (Exception e){
-            return e.getMessage();
-        }
+
+        String result = null;
+        result = path;
         return result;
+//        try {
+//            File f=new File(path);
+//            int length=(int)f.length();
+//            byte[] buff=new byte[length];
+//            FileInputStream fin=new FileInputStream(f);
+//            int flength = fin.read(buff);
+//            fin.close();
+//            result=new String(buff,"gbk");
+//        }catch (Exception e){
+//            return e.getMessage();
+//        }
+//        return result;
     }
 
-    private String decodeGbkFile(String path) {
-        try {
-            String content = "";
-//            File file = new File(path);
-//            InputStreamReader read = new InputStreamReader(new FileInputStream(file),"gbk");
-//            BufferedReader br = new BufferedReader(read);
-//            String str = "";
-//            while (null != (str = br.readLine())) {
-//                content = content + str;
-//            }
-//            br.close();
-//            return path;
-            return content;
-        } catch (Exception e) {
-            return e.getMessage();
-        }
-    }
 
     private boolean openApplicationSettings() {
         Uri packageURI = Uri.parse("package:" + "cn.yotaku.light");

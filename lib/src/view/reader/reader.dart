@@ -96,8 +96,10 @@ class ReaderState extends State<Reader> {
         children: <Widget>[
 //          new Text('hwllo ')
           new Page(
+            prefs: widget.prefs,
             showMenu: showMenu,
             bookDecoderFuture: bookDecoderFuture,
+            bookService: bookService,
             readModeList: readModeList,
             currentReadModeId: currentReadModeId,
             textStyle: textStyle,

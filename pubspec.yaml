@@ -16,6 +16,7 @@ dependencies:
   sqflite: ^0.8.4
   shared_preferences: ^0.4.0
   options_file: any
+  crypto: "^2.0.2+1"
   epub:
     path: d:/tmp/epub/
   html2md:
