@@ -40,7 +40,6 @@ You can transplant Light to iOS if you have a mac.
 ![搜索贴吧](https://user-images.githubusercontent.com/17924777/39093389-d2d79c64-4651-11e8-9b19-07490ccbb44a.gif) | ![浏览帖子](https://user-images.githubusercontent.com/17924777/39093405-0108874c-4652-11e8-9e79-884a1f6961a9.gif)
 
 ## Usage
-### Flutter Environment
 This project is built on Flutter.<br>
 - Follow the installation instructions on [flutter.io](https://flutter.io) to install Flutter.
 - Some dependencies in pubspec.yaml need to be resolved.
