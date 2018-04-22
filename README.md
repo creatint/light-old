@@ -55,4 +55,4 @@ Email: creatint@163.com<br>QQ: 565864175
 
 
 ## License
-Light is available under the GPL license. See the LICENSE file.
+Light is available under the GPL license. See the [LICENSE](https://github.com/creatint/light/blob/master/LICENSE) file.
