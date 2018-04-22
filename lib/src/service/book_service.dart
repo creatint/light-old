@@ -654,16 +654,20 @@ class Record {
           receiveStream.listen((value) {
             if ('active' == value['state']) {
 //              print('${value['record']}');
-              print('进度：${value['process']}%，时间：${value['seconds']} '
-                  's，页码：${value['index']}');
+              print('进度：${value['process']}%，页码：${value['number']}，'
+                  '用时：${value['time']} ms，'
+                  '平均用时 ${(value['totalTime'] - time1) / value['number'] * 10 ~/
+                  1 / 10} ms');
             } else if ('done' == value['state']) {
               // 计算完成
               key = _key;
               records = value['records'];
               int time2 = new DateTime.now().millisecondsSinceEpoch;
-              print('计算完成，共 ${records.length} 页\n'
-                  '最后一页：${records[records.length - 1]}\n'
-                  '平均每页所需时间 ${(time2 - time1) / records.length}ms');
+              print('计算完成，共 ${records.length} 页，'
+                  '共用时 ${(time2 - time1) / 100 ~/ 10} s\n'
+                  '平均用时 ${(time2 - time1) / records.length * 10 ~/ 1 / 10} ms\n'
+                  '平均渲染次数 ${value['renderTimes'] / records.length * 10 ~/ 1 /
+                  10} 次');
             }
           });
         }
@@ -699,7 +703,7 @@ class Record {
       int length = 200; //长度
       int offset = 0; //偏移
       int index = 0; //页面索引
-      int times = 0; //循环次数
+      int loopTimes = 0; //循环次数
       Section section; //当前字块
       //获取字块
       Section getSection(int offset, int length) {
@@ -707,11 +711,12 @@ class Record {
         return section;
       }
 
+      int time = new DateTime.now().millisecondsSinceEpoch;
       int time0 = new DateTime.now().millisecondsSinceEpoch;
       do {
         loop:
         for (int i = 1; i < 100; i++) {
-          times++;
+          loopTimes++;
           if (content.load(getSection(offset, length * i))) {
             List<int> record = [offset, content.length];
 //            print('calculate record: $record');
@@ -721,16 +726,23 @@ class Record {
             sendPort.send({
               'state': 'active',
               'record': record,
-              'process': (offset / bookDecoder.maxLength * 10000).round()/100,
-              'index': index - 1,
-              'seconds': ((time1 - time0)/100).round()/10
+              'process': (offset / bookDecoder.maxLength * 1000).round() / 10,
+              'number': index,
+              'time': time1 - time,
+              'totalTime': time1
             });
+            time = new DateTime.now().millisecondsSinceEpoch;
             break loop;
           }
         }
       } while ((offset + length) < bookDecoder.maxLength);
-      print('循环 $times 次');
-      sendPort.send({'state': 'done', 'records': records});
+      print('LoopTimes $loopTimes 次');
+      print('RenderTimes ${content.renderTimes} 次');
+      sendPort.send({
+        'state': 'done',
+        'records': records,
+        'renderTimes': content.renderTimes
+      });
     }
   }
 
@@ -757,6 +769,7 @@ class Record {
 
   void close() {
     if (null != isolate) {
+      isolate.pause(isolate.pauseCapability);
       isolate.kill();
     }
   }

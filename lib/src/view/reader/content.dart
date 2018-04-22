@@ -32,6 +32,9 @@ class Content extends StatelessWidget {
   final TextDirection textDirection;
   final int maxLines;
 
+  ///渲染次数
+  int renderTimes = 0;
+
   ///文字绘制器
   TextPainter _textPainter;
 
@@ -219,6 +222,7 @@ class Content extends StatelessWidget {
   ///内存中渲染文字页面，返回页面大小
   Size layout(String str) {
 //    print('layout@Content');
+    renderTimes++;
     content = str ?? '';
     _textPainter = getTextPainter(getTextSpan(str))
       ..layout(minWidth: 20.0, maxWidth: width);
