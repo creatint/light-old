@@ -42,7 +42,6 @@ You can transplant Light to iOS if you have a mac.
 ## Usage
 ### Flutter Environment
 This project is built on Flutter.<br>
-[documentation](https://flutter.io/).
 1. Follow the installation instructions on [flutter.io](https://flutter.io) to install Flutter.
 2. Light can be run like any other Flutter app, either through the IntelliJ UI or through running the following command from within the Light directory:
 ```
