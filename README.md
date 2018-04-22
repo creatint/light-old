@@ -42,12 +42,16 @@ You can transplant Light to iOS if you have a mac.
 ## Usage
 ### Flutter Environment
 This project is built on Flutter.<br>
-1. Follow the installation instructions on [flutter.io](https://flutter.io) to install Flutter.
-2. Some dependencies in pubspec.yaml need to be resolved.
-> epub https://github.com/creatint/dart-epub
-> html2md https://github.com/creatint/dart-html2md
-> mimc https://github.com/creatint/mimc-flutter
-3. Light can be run like any other Flutter app, either through the IntelliJ UI or through running the following command from within the Light directory:
+- Follow the installation instructions on [flutter.io](https://flutter.io) to install Flutter.
+- Some dependencies in pubspec.yaml need to be resolved.
+
+ name |  link
+:-------------------------:|:-------------------------:
+epub | https://github.com/creatint/dart-epub
+html2md | https://github.com/creatint/dart-html2md
+mimc | https://github.com/creatint/mimc-flutter
+ 
+- Light can be run like any other Flutter app, either through the IntelliJ UI or through running the following command from within the Light directory:
 ```
 flutter packages get
 flutter run
