@@ -1,7 +1,8 @@
-#Light
+# Light
+
 ![Light logo](https://user-images.githubusercontent.com/17924777/39092072-762deace-4636-11e8-8acd-447a03c7556e.png)
 
-###### A light novel reader app on Flutter.
+## A light novel reader app on Flutter.
 Light contains platform-specific elements only for Android.<br>
 You can transplant Light to iOS if you have a mac.
 
