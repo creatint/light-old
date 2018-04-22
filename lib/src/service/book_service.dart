@@ -224,6 +224,8 @@ class BookDecoder {
   final Book book;
   final BookType type;
 
+  static Map<Book, BookDecoder> _cache = {};
+
   static const platform = const MethodChannel('light.yotaku.cn/system');
 
   String content; //全部内容
@@ -343,11 +345,16 @@ class BookDecoder {
   ///异步初始化书籍文件
   static Future<BookDecoder> init({@required Book book}) async {
     print('init book decoder');
+    if (_cache.containsKey(book)) {
+      print('已存在bokDecoder');
+      return _cache[book];
+    }
     ReceivePort receivePort = new ReceivePort();
     await Isolate.spawn(_init, receivePort.sendPort);
     SendPort sendPort = await receivePort.first;
     Map res = await sendReceive(sendPort, book);
-    return new BookDecoder(book: book, content: res['content']);
+    _cache[book] = new BookDecoder(book: book, content: res['content']);
+    return _cache[book];
   }
 
   ///获取text文件字节总长度
@@ -700,7 +707,7 @@ class Record {
           page: msg['media']);
 
       Map<int, List<int>> records = <int, List<int>>{}; //分页数据
-      int length = 200; //长度
+      int length = 500; //长度
       int offset = 0; //偏移
       int index = 0; //页面索引
       int loopTimes = 0; //循环次数

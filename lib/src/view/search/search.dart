@@ -39,7 +39,7 @@ class SearchState extends State<Search> with SingleTickerProviderStateMixin {
   bool isSearched; //避免初始化时显示seggestions，初始化后置为false
   String word; //用于搜索的关键字
   bool isLoadding = false;
-  List<String> suggestions = <String>[]; //搜索建议
+  List<dynamic> suggestions = <String>[]; //搜索建议
   List<String> histories = <String>[]; //搜索历史
   List<Book> recommends = <Book>[]; //资源推荐
   List<Book> results; //搜索结果
@@ -133,7 +133,7 @@ class SearchState extends State<Search> with SingleTickerProviderStateMixin {
         Match matche = reg.firstMatch(response.body);
         if (matche != null) {
           String str = matche.group(1);
-          var res = json.decode(str);
+          Map res = json.decode(str);
           if (res['s'] != null) {
             if (textEditingController.text.isNotEmpty) {
               print('handleChanged2 text=$text isEmpty=${text.isEmpty}');
@@ -146,7 +146,7 @@ class SearchState extends State<Search> with SingleTickerProviderStateMixin {
           }
         }
         throw '查询失败，无法联网或API不可用';
-      }).catchError((var error) {
+      }).catchError((error) {
         print('出错啦！！$error');
       });
     } else if (widget.searchType == SearchType.local) {

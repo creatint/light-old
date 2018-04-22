@@ -48,7 +48,7 @@ class PageState extends State<Page> {
   BookDecoder bookDecoder;
 
   ///翻页控制器
-  PageController controller = new PageController(initialPage: 10);
+  PageController controller;
 
   ///滚动物理
   NeverScrollableScrollPhysics physics = new NeverScrollableScrollPhysics();
@@ -376,6 +376,7 @@ class PageState extends State<Page> {
   void initState() {
     super.initState();
     records = new Record(prefs: widget.prefs);
+    controller = new PageController();
   }
 
   @override

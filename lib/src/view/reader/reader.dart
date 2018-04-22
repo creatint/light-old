@@ -22,6 +22,7 @@ class Reader extends StatefulWidget {
 
 class ReaderState extends State<Reader> {
   final GlobalKey<MenuState> menuKey = new GlobalKey<MenuState>();
+  final GlobalKey<PageState> pageKey = new GlobalKey<PageState>();
 
   ///
   static final BookService bookService = new BookService();
@@ -96,6 +97,7 @@ class ReaderState extends State<Reader> {
         children: <Widget>[
 //          new Text('hwllo ')
           new Page(
+            key: pageKey,
             prefs: widget.prefs,
             showMenu: showMenu,
             bookDecoderFuture: bookDecoderFuture,

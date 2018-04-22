@@ -63,7 +63,7 @@ class SearchTiebaState extends State<SearchTieba> {
         //TODO:贴吧API ERROR，记录日志
         return;
       }
-      res['query_match']['search_data'].forEach((Map tieba){
+      res['query_match']['search_data'].forEach((tieba){
         print(tieba);
         setState((){
           results.add(tieba);
