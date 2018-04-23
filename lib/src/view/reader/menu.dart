@@ -2,7 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'setting_pannel.dart';
-import '../parts/item_button.dart';
+import 'package:light/src/widgets/item_button.dart';
 import 'setting_list.dart';
 import 'package:light/src/model/read_mode.dart';
 

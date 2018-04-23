@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 
-import 'package:light/src/view/custom_page_route.dart';
+import 'package:light/src/widgets/custom_page_route.dart';
 import 'package:light/src/view/search/search.dart';
 //import 'package:light/src/service/db.dart';
 

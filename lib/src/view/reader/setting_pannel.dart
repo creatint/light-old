@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
-import '../parts/label.dart';
-import '../parts/custom_button.dart';
+import 'package:light/src/widgets/label.dart';
+import 'package:light/src/widgets/custom_button.dart';
 import 'package:light/src/model/read_mode.dart';
 
 enum Settings { fontSize, lineHeight, mode }

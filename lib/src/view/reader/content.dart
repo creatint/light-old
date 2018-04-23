@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
-import '../parts/custom_text_painter.dart';
+import 'package:light/src/utils/custom_text_painter.dart';
 import 'package:light/src/model/read_mode.dart';
 import 'package:light/src/service/book_service.dart';
 
@@ -37,6 +37,9 @@ class Content extends StatelessWidget {
 
   ///文字绘制器
   TextPainter _textPainter;
+
+  /// 文本绘制器
+  TextPainter textPainter;
 
   ///页面绘制器
   CustomTextPainter _painter;
@@ -98,6 +101,7 @@ class Content extends StatelessWidget {
   ///返回false时则未完成
   bool load(Section section) {
     cache = section.text;
+//    return true;
 
     // 指定child直接返回true
     if (null != child) return true;

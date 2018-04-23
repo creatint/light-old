@@ -7,10 +7,10 @@ import 'package:html/parser.dart' as parser;
 import 'package:html/dom.dart' as dom;
 //import 'package:sqflite/sqflite.dart';
 
-import 'package:light/src/view/custom_page_route.dart';
+import 'package:light/src/widgets/custom_page_route.dart';
 import 'package:light/src/model/tieba_topic.dart';
 import 'package:light/src/view/search/tieba/detail.dart';
-import 'package:light/src/view/custom_indicator.dart';
+import 'package:light/src/widgets/custom_indicator.dart';
 //import 'package:light/src/parts/select_bottom_bar.dart';
 
 class Tieba extends StatefulWidget {

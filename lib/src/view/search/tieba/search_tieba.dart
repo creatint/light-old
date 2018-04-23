@@ -2,9 +2,9 @@ import 'dart:convert';
 import 'package:http/http.dart';
 import 'package:flutter/material.dart';
 
-import 'package:light/src/view/custom_page_route.dart';
+import 'package:light/src/widgets/custom_page_route.dart';
 import 'package:light/src/view/search/search_item.dart';
-import 'package:light/src/view/custom_indicator.dart';
+import 'package:light/src/widgets/custom_indicator.dart';
 import 'package:light/src/view/search/tieba/tieba.dart';
 
 class SearchTieba extends StatefulWidget {

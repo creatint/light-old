@@ -12,12 +12,12 @@ import 'package:html/dom.dart' as dom;
 import 'package:url_launcher/url_launcher.dart' as urll;
 
 //import 'package:light/src/service/file_service.dart';
-import 'package:light/src/view/custom_page_route.dart';
-import 'package:light/src/view/custom_indicator.dart';
+import 'package:light/src/widgets/custom_page_route.dart';
+import 'package:light/src/widgets/custom_indicator.dart';
 import 'package:light/src/model/tieba_topic.dart';
 import 'package:light/src/model/tieba_post.dart';
-import 'package:light/src/view/parts/dialog_item.dart';
-import 'package:light/src/parts/image_view.dart';
+import 'package:light/src/widgets/dialog_item.dart';
+import 'package:light/src/widgets/image_view.dart';
 
 enum DialogAction { copy }
 

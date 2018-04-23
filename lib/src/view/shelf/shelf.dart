@@ -6,7 +6,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:light/src/service/book_service.dart';
 import 'package:light/src/model/book.dart';
 import 'package:light/src/view/search/search.dart';
-import 'package:light/src/view/custom_page_route.dart';
+import 'package:light/src/widgets/custom_page_route.dart';
 import 'package:light/src/view/shelf/import_book.dart';
 import 'package:light/src/view/shelf/book_item.dart';
 import 'package:light/src/view/reader/reader.dart';

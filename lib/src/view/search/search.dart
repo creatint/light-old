@@ -4,11 +4,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 
-import 'package:light/src/view/custom_page_route.dart';
+import 'package:light/src/widgets/custom_page_route.dart';
 import 'package:light/src/model/book.dart';
 import 'package:light/src/view/search/tieba/search_tieba.dart';
 import 'package:light/src/service/search.dart';
-import 'package:light/src/view/custom_indicator.dart';
+import 'package:light/src/widgets/custom_indicator.dart';
 import 'package:light/src/view/search/search_item.dart';
 
 ///搜索类型 online:在线搜索 local:本地搜索

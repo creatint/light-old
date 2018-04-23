@@ -10,11 +10,11 @@ import 'package:light/src/service/file_service.dart';
 import 'package:light/src/model/book.dart';
 import 'package:light/src/view/reader2/reader.dart';
 import 'package:light/src/service/book_service.dart';
-import 'package:light/src/view/custom_page_route.dart';
-import 'package:light/src/view/custom_indicator.dart';
+import 'package:light/src/widgets/custom_page_route.dart';
+import 'package:light/src/widgets/custom_indicator.dart';
 import 'package:light/src/view/shelf/entity_item.dart';
-import 'package:light/src/parts/select_bottom_bar.dart';
-import 'package:light/src/parts/selected_list_model.dart';
+import 'package:light/src/widgets/select_bottom_bar.dart';
+import 'package:light/src/widgets/selected_list_model.dart';
 
 enum DialogAction { requestForPermission }
 
