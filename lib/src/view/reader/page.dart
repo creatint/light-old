@@ -6,6 +6,8 @@ import 'package:light/src/model/read_mode.dart';
 import 'content.dart';
 import 'package:light/src/service/book_service.dart';
 import 'package:light/src/model/book.dart';
+import 'package:light/src/utils/page_calculator.dart';
+import 'package:light/src/utils/custom_text_painter.dart';
 
 class Page extends StatefulWidget {
   Page(
@@ -47,8 +49,14 @@ class PageState extends State<Page> {
   ///资源服务实例
   BookDecoder bookDecoder;
 
-  ///翻页控制器
+  /// 翻页控制器
   PageController controller;
+
+  /// 分页计算器
+  PageCalculator pageCalculator;
+
+  /// 分页绘制器
+  CustomTextPainter painter;
 
   ///滚动物理
   NeverScrollableScrollPhysics physics = new NeverScrollableScrollPhysics();
@@ -60,10 +68,10 @@ class PageState extends State<Page> {
   Size media;
 
   ///文字显示尺寸
-  Size page;
+  Size _page;
 
   ///当前页码
-  int pageNumber = 0;
+  int pageNumber;
 
   ///旧页码
   int oldPageNumber = 0;
@@ -72,7 +80,7 @@ class PageState extends State<Page> {
   int _maxLines = 13;
 
   ///字块长度
-  int sectionSize = 400;
+  int sectionSize = 450;
 
   ///字块偏移值
   int sectionOffset = 0;
@@ -106,6 +114,9 @@ class PageState extends State<Page> {
   ///缓存内容
   String cache;
 
+  /// 计算总次数
+  int times = 0;
+
   ///弹出缓存
   String get popCache {
     String _tmp = cache;
@@ -122,6 +133,16 @@ class PageState extends State<Page> {
     rcache = null;
     return _tmp;
   }
+
+  void set page(Size size) {
+    if (size != _page) {
+      _page = size;
+      pageCalculator.pageSize = _page;
+      pageCalculator.maxLines = maxLines;
+    }
+  }
+
+  Size get page => _page;
 
   ///处理屏幕改变事件
   void handleMediaChange(Size size) {
@@ -249,58 +270,60 @@ class PageState extends State<Page> {
 
   ///获取标题
   String getTitle() {
-    print('获取标题:${section?.title ?? bookDecoder?.book?.title ?? ''}');
-//    return title ?? section?.title ?? book?.book?.title ?? '';
-//    return '我是标题';
+//    print('获取标题:${section?.title ?? bookDecoder?.book?.title ?? ''}');
     return section?.title ?? bookDecoder?.book?.title ?? '';
   }
 
+
   // 构建内容页面
-  Content buildContent(int index) {
-    print('buildContent@Page index=$index');
-    pageNumber = index;
-    cache = null;
-    Content _content = new Content(
-        pageNumber: pageNumber,
-        reverse: reverse,
-        textStyle: widget.textStyle,
-        textAlign: widget.textAlign,
-        textDirection: widget.textDirection,
-        page: page,
-        maxLines: maxLines);
+  Widget buildContent2(int index) {
+    print('buildContent2@Page index=$index');
+    if (index != pageNumber) {
+      pageNumber = index;
+      cache = null;
 
-    ///存在当前分页数据，直接获取内容
-    if (records.containsKey(index)) {
-      print('分页(1)：${records[index]}');
-      _content.layout(getSection(records[index][0], records[index][1]).text);
-      return _content;
-    }
-
-    ///存在上一页面数据,获取下一页内容
-    if (records.containsKey(index - 1)) {
-      // 计算下一页偏移值
-      int offset = records[index - 1][0] + records[index - 1][1];
-      // 最大循环100次，正常情况下10次左右
-      for (int i = 1; i < 100; i++) {
-        if (_content.load(getSection(offset, sectionSize * i))) {
-          records[index] = [offset, _content.length];
-          print('分页(2)：${records[index]}');
-          break;
+      ///存在当前分页数据，直接获取内容
+      if (records.containsKey(index)) {
+        print('分页(1)：${records[index]}');
+        pageCalculator.layout(getSection(records[index][0], records[index][1]).text);
+      } else if (records.containsKey(index - 1)) {
+        ///存在上一页面数据,获取下一页内容
+        // 计算下一页偏移值
+        int offset = records[index - 1][0] + records[index - 1][1];
+        // 最大循环100次，正常情况下10次左右
+        for (int i = 1; i < 100; i++) {
+          Section section = getSection(offset, sectionSize * i);
+          if (pageCalculator.load(section.text)) {
+            records[index] = [offset, pageCalculator.length];
+            print('分页(2)：${records[index]}');
+            break;
+          }
         }
+        times += pageCalculator.times;
+        print('计算 ${pageCalculator.times} 次\n'
+            '平均每页计算 ${times / (index + 1) * 10~/1/10}\n'
+            '共计算 ${times} 次');
+        pageCalculator.times = 0;
+      } else {
+        for (int i = 1; i < 100; i++) {
+          Section section = getSection(sectionOffset, sectionSize * i);
+          if (pageCalculator.load(section.text)) {
+            records[index] = [sectionOffset, pageCalculator.length];
+            print('分页(3)：${records[index]}');
+            break;
+          }
+        }
+        times += pageCalculator.times;
+        print('计算 ${pageCalculator.times} 次\n'
+            '平均每页计算 ${times / (index + 1) * 10~/1/10}\n'
+            '共计算 ${times} 次');
+        pageCalculator.times = 0;
+        return new Text('错误码：001E1');
       }
-      cache = _content.clipped;
-      return _content;
     }
-    for (int i = 1; i < 100; i++) {
-      if (_content.load(getSection(sectionOffset, sectionSize * i))) {
-        records[index] = [sectionOffset, _content.length];
-        print('分页(3)：${records[index]}');
-        cache = _content.clipped;
-        return _content;
-      }
-    }
-    _content.child = new Text('错误码：001E1');
-    return _content;
+    return new CustomPaint(
+      painter: painter,
+    );
   }
 
   Widget pageBuilder(BuildContext context, int index) {
@@ -329,6 +352,8 @@ class PageState extends State<Page> {
             child: new LayoutBuilder(
                 builder: (BuildContext context, BoxConstraints constraints) {
               page = new Size(constraints.maxWidth, constraints.maxHeight);
+              pageCalculator.maxLines = maxLines;
+//              print('page:$page');
               return new FutureBuilder(
                 future: widget.bookDecoderFuture,
                 builder: (BuildContext context,
@@ -340,13 +365,13 @@ class PageState extends State<Page> {
                       snapshot.hasData) {
                     bookDecoder = snapshot.data;
                     records.reset(
-                        media: page,
+                        pageSize: page,
                         bookDecoder: bookDecoder,
                         textStyle: widget.textStyle,
                         textAlign: widget.textAlign,
                         textDirection: widget.textDirection,
                         maxLines: maxLines);
-                    return buildContent(index);
+                    return buildContent2(index);
                   } else {
                     return new Center(
                         child: new Text('Oops！${snapshot.error}'
@@ -377,12 +402,19 @@ class PageState extends State<Page> {
     super.initState();
     records = new Record(prefs: widget.prefs);
     controller = new PageController();
+    pageCalculator = new PageCalculator(
+        key: 'page',
+        textStyle: widget.textStyle,
+        textAlign: widget.textAlign,
+        textDirection: widget.textDirection);
+    painter =
+        new CustomTextPainter(textPainter: pageCalculator.textPainter);
   }
 
   @override
   void dispose() {
-    super.dispose();
     records.close();
+    super.dispose();
   }
 
   @override

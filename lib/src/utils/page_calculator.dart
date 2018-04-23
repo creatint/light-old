@@ -10,15 +10,18 @@ class PageCalculator {
     int maxLines,
   }) {
     if (_cache.containsKey(key)) {
-      return _cache[key];
+      return _cache[key]
+        ..pageSize = size
+        ..textStyle = textStyle
+        ..textAlign = textAlign
+        ..textDirection = textDirection;
     } else {
       _cache[key] = new PageCalculator._internal(
-        size: size,
-        textStyle: textStyle,
-        textAlign: textAlign,
-        textDirection: textDirection,
-        maxLines: maxLines
-      );
+          size: size,
+          textStyle: textStyle,
+          textAlign: textAlign,
+          textDirection: textDirection,
+          maxLines: maxLines);
       return _cache[key];
     }
   }
@@ -29,7 +32,7 @@ class PageCalculator {
     TextAlign textAlign,
     TextDirection textDirection,
     int maxLines,
-  })  :this.pageSize = size,
+  })  : this.pageSize = size,
         this._textStyle = textStyle,
         this._textAlign = textAlign,
         this._textDirection = textDirection,
@@ -74,23 +77,27 @@ class PageCalculator {
 
   /// 设置文本样式
   set textStyle(TextStyle textStyle) {
+    if (null == textStyle) return;
     _textStyle = textStyle;
   }
 
   /// 设置文本排版
   set textAlign(TextAlign textAlign) {
+    if (null == textAlign) return;
     _textAlign = textAlign;
     textPainter.textAlign = _textAlign;
   }
 
   /// 设置文本阅读方向
   set textDirection(TextDirection textDirection) {
+    if (null == textDirection) return;
     _textDirection = textDirection;
     textPainter.textDirection = _textDirection;
   }
 
   /// 设置最大行数
   set maxLines(int maxLines) {
+    if (null == maxLines) return;
     _maxLines = maxLines;
     textPainter.maxLines = _maxLines;
   }
@@ -114,9 +121,11 @@ class PageCalculator {
 
     // 最多循环20次
     for (int i = 0; i < 20; i++) {
-      print('================= start:$start mid: $mid end: $end ==================');
+//      print(
+//          '================= start:$start mid: $mid end: $end ==================');
       if (layout(text.substring(0, mid))) {
-        if (mid <= start || mid >= end) break;;
+        if (mid <= start || mid >= end) break;
+        ;
         // 未越界
         start = mid;
         mid = (start + end) ~/ 2;
@@ -136,7 +145,6 @@ class PageCalculator {
   bool layout(String text) {
     times++;
     text = text ?? '';
-    print('layout length=${text.length}');
     textPainter
       ..text = getTextSpan(text)
       ..layout(maxWidth: pageSize.width);
