@@ -51,10 +51,10 @@ public class MainActivity extends FlutterActivity {
 //                            String str = decodeGbkFile(call.argument("path"));
 //                            String str = readFile("hahahaha");
 //                            System.out.print(call.argument("path").toString());
-//                            String path = call.argument("path");
-//                                String res = readFile("hahaha");
-//                                result.success(res);
-                                result.success("hahaha");
+                            String path = call.argument("path");
+                                String res = readFile(path);
+                                result.success(res);
+//                                result.success("hahaha");
                             } else {
                                 result.notImplemented();
                             }
@@ -85,20 +85,20 @@ public class MainActivity extends FlutterActivity {
     private String readFile(String path) {
 
         String result = null;
-        result = path;
-        return result;
-//        try {
-//            File f=new File(path);
-//            int length=(int)f.length();
-//            byte[] buff=new byte[length];
-//            FileInputStream fin=new FileInputStream(f);
-//            int flength = fin.read(buff);
-//            fin.close();
-//            result=new String(buff,"gbk");
-//        }catch (Exception e){
-//            return e.getMessage();
-//        }
+//        result = path;
 //        return result;
+        try {
+            File f=new File(path);
+            int length=(int)f.length();
+            byte[] buff=new byte[length];
+            FileInputStream fin=new FileInputStream(f);
+            int flength = fin.read(buff);
+            fin.close();
+            result=new String(buff,"gbk");
+        }catch (Exception e){
+            return e.getMessage();
+        }
+        return result;
     }
 
 
