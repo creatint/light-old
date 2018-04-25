@@ -139,6 +139,7 @@ class PageState extends State<Page> {
     if (size != _page) {
       _page = size;
       pageCalculator.pageSize = _page;
+      _maxLines = null;
       pageCalculator.maxLines = maxLines;
     }
   }
@@ -277,16 +278,11 @@ class PageState extends State<Page> {
       .copyWith(fontSize: 14.0, color: Theme.of(context).disabledColor);
 
   int get maxLines {
-    print('media=$media');
-//    double lineHeight = widget.textStyle.fontSize
-//        * widget.textStyle.height + 2.0;
-    double lineHeight =
-        1.1667 * widget.textStyle.fontSize * widget.textStyle.height;
-    print('${widget.textStyle.fontSize} * ${widget.textStyle
-        .height} + 2.0=$lineHeight');
-    _maxLines = page.height ~/ lineHeight;
-    print('${page.height} ~/ ${lineHeight} = ${_maxLines}');
-//    print('maxLines = $_maxLines');
+    if (null == _maxLines) {
+      double lineHeight =
+          1.1667 * widget.textStyle.fontSize * widget.textStyle.height;
+      _maxLines = page.height ~/ lineHeight;
+    }
     return _maxLines;
   }
 
@@ -299,8 +295,9 @@ class PageState extends State<Page> {
   // 构建内容页面
   Widget buildContent(int index) {
     print('buildContent@Page index=$index');
-    print('page=$page');
-    print('maxLines=$maxLines');
+//    print('page=$page');
+//    print('maxLines=$maxLines');
+    // 页码非当前页，则计算页码，否则直接显示当前页面
     if (index != pageNumber) {
       pageNumber = index;
       cache = null;
@@ -345,15 +342,15 @@ class PageState extends State<Page> {
         return new Text('错误码：001E1');
       }
     }
-    return new Text(
-      pageCalculator.content,
-      style: widget.textStyle,
-      textAlign: widget.textAlign,
-      textDirection: widget.textDirection,
-    );
-//    return new CustomPaint(
-//      painter: painter,
+//    return new Text(
+//      pageCalculator.content,
+//      style: widget.textStyle,
+//      textAlign: widget.textAlign,
+//      textDirection: widget.textDirection,
 //    );
+    return new CustomPaint(
+      painter: painter,
+    );
   }
 
   Widget pageBuilder(BuildContext context, int index) {
@@ -381,9 +378,8 @@ class PageState extends State<Page> {
           new Expanded(
             child: new LayoutBuilder(
                 builder: (BuildContext context, BoxConstraints constraints) {
+              // 刷新页面尺寸
               page = new Size(constraints.maxWidth, constraints.maxHeight);
-              pageCalculator.maxLines = maxLines;
-//              print('page:$page');
               return new FutureBuilder(
                 future: widget.bookDecoderFuture,
                 builder: (BuildContext context,
@@ -394,7 +390,8 @@ class PageState extends State<Page> {
                       !snapshot.hasError &&
                       snapshot.hasData) {
                     bookDecoder = snapshot.data;
-                    if (isShowMenu)
+                    // 显示菜单时不刷新整书分页
+                    if (!isShowMenu)
                       records.reset(
                           pageSize: page,
                           bookDecoder: bookDecoder,
