@@ -614,7 +614,7 @@ class Record {
     @required textDirection,
     @required maxLines,
   }) async {
-    return;
+//    return;
     print('reset@Record');
 
     this.pageSize = pageSize;
