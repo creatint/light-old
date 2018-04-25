@@ -23,7 +23,6 @@ import 'package:light/src/model/book.dart';
 import 'package:light/src/widgets/selected_list_model.dart';
 import 'package:light/src/service/file_service.dart';
 import 'package:light/src/model/read_mode.dart';
-import 'package:light/src/view/reader/content.dart';
 import 'package:light/src/utils/page_calculator.dart';
 
 class BookService {
@@ -615,6 +614,7 @@ class Record {
     @required textDirection,
     @required maxLines,
   }) async {
+    return;
     print('reset@Record');
 
     this.pageSize = pageSize;

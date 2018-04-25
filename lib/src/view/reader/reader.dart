@@ -40,7 +40,7 @@ class ReaderState extends State<Reader> {
   TextAlign textAlign = TextAlign.justify;
   TextDirection textDirection = TextDirection.ltr;
   double fontSize = 20.0;
-  double lineHeight = 1.8;
+  double lineHeight = 1.2;
 
   TextStyle get textStyle {
     return new TextStyle(
@@ -49,13 +49,14 @@ class ReaderState extends State<Reader> {
       height: lineHeight,
       fontStyle: FontStyle.normal,
       fontWeight: FontWeight.normal,
+      textBaseline: TextBaseline.ideographic
     );
   }
 
   ///显示菜单
-  void showMenu() {
-    Navigator
-        .push(
+  Future<bool> showMenu() {
+    return Navigator
+        .push<bool>(
             context,
             new PageRouteBuilder(
                 opaque: false,
@@ -71,6 +72,9 @@ class ReaderState extends State<Reader> {
         .then((value) {
       if (true == value) {
         Navigator.pop(context);
+        return false;
+      } else {
+        return true;
       }
     });
   }
@@ -84,6 +88,16 @@ class ReaderState extends State<Reader> {
           setState(() {
             currentReadModeId = value;
           });
+        break;
+      case Settings.lineHeight:
+        setState(() {
+          lineHeight = value;
+        });
+        break;
+      case Settings.fontSize:
+        setState(() {
+          fontSize = value;
+        });
         break;
       default:
     }

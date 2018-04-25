@@ -3,9 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:light/src/model/read_mode.dart';
-import 'content.dart';
 import 'package:light/src/service/book_service.dart';
-import 'package:light/src/model/book.dart';
 import 'package:light/src/utils/page_calculator.dart';
 import 'package:light/src/utils/custom_text_painter.dart';
 
@@ -25,7 +23,7 @@ class Page extends StatefulWidget {
   final SharedPreferences prefs;
 
   ///用于显示菜单的回调函数
-  final VoidCallback showMenu;
+  final ValueGetter<Future<bool>> showMenu;
 
   ///资源服务实例
   final Future<BookDecoder> bookDecoderFuture;
@@ -96,23 +94,26 @@ class PageState extends State<Page> {
 
   int childCount = 1;
 
-  ///用于计算点击手势区域的比例
+  /// 用于计算点击手势区域的比例
   Map<String, List<int>> tapRatio = <String, List<int>>{
     'x': [1, 1, 1],
     'y': [1, 1, 1]
   };
 
-  ///点击手势区域坐标点
+  /// 点击手势区域坐标点
   Map<String, double> tapGrid = <String, double>{};
 
-  ///阅读记录
+  /// 阅读记录
 //  Map<int, List<int>> records = <int, List<int>>{};
 
-  ///阅读记录
+  /// 阅读记录
   Record records;
 
-  ///缓存内容
+  /// 缓存内容
   String cache;
+
+  /// 是否正在显示菜单
+  bool isShowMenu = false;
 
   /// 计算总次数
   int times = 0;
@@ -194,7 +195,21 @@ class PageState extends State<Page> {
         handlePageChanged(true);
       } else {
         //打开菜单
-        widget.showMenu();
+        // TODO: 异步刷新阅读主题
+        isShowMenu = true;
+        widget.showMenu().then((value) {
+          if (true == value) {
+            // 弹出菜单，调用record.reset
+            records.reset(
+                pageSize: page,
+                bookDecoder: bookDecoder,
+                textStyle: widget.textStyle,
+                textAlign: widget.textAlign,
+                textDirection: widget.textDirection,
+                maxLines: maxLines);
+            isShowMenu = false;
+          }
+        });
       }
     }
   }
@@ -262,8 +277,15 @@ class PageState extends State<Page> {
       .copyWith(fontSize: 14.0, color: Theme.of(context).disabledColor);
 
   int get maxLines {
-    double lineHeight = widget.textStyle.fontSize * widget.textStyle.height;
+    print('media=$media');
+//    double lineHeight = widget.textStyle.fontSize
+//        * widget.textStyle.height + 2.0;
+    double lineHeight =
+        1.1667 * widget.textStyle.fontSize * widget.textStyle.height;
+    print('${widget.textStyle.fontSize} * ${widget.textStyle
+        .height} + 2.0=$lineHeight');
     _maxLines = page.height ~/ lineHeight;
+    print('${page.height} ~/ ${lineHeight} = ${_maxLines}');
 //    print('maxLines = $_maxLines');
     return _maxLines;
   }
@@ -274,10 +296,11 @@ class PageState extends State<Page> {
     return section?.title ?? bookDecoder?.book?.title ?? '';
   }
 
-
   // 构建内容页面
-  Widget buildContent2(int index) {
-    print('buildContent2@Page index=$index');
+  Widget buildContent(int index) {
+    print('buildContent@Page index=$index');
+    print('page=$page');
+    print('maxLines=$maxLines');
     if (index != pageNumber) {
       pageNumber = index;
       cache = null;
@@ -285,7 +308,8 @@ class PageState extends State<Page> {
       ///存在当前分页数据，直接获取内容
       if (records.containsKey(index)) {
         print('分页(1)：${records[index]}');
-        pageCalculator.layout(getSection(records[index][0], records[index][1]).text);
+        pageCalculator
+            .layout(getSection(records[index][0], records[index][1]).text);
       } else if (records.containsKey(index - 1)) {
         ///存在上一页面数据,获取下一页内容
         // 计算下一页偏移值
@@ -301,7 +325,7 @@ class PageState extends State<Page> {
         }
         times += pageCalculator.times;
         print('计算 ${pageCalculator.times} 次\n'
-            '平均每页计算 ${times / (index + 1) * 10~/1/10}\n'
+            '平均每页计算 ${times / (index + 1) * 10 ~/ 1 / 10}\n'
             '共计算 ${times} 次');
         pageCalculator.times = 0;
       } else {
@@ -315,15 +339,21 @@ class PageState extends State<Page> {
         }
         times += pageCalculator.times;
         print('计算 ${pageCalculator.times} 次\n'
-            '平均每页计算 ${times / (index + 1) * 10~/1/10}\n'
+            '平均每页计算 ${times / (index + 1) * 10 ~/ 1 / 10}\n'
             '共计算 ${times} 次');
         pageCalculator.times = 0;
         return new Text('错误码：001E1');
       }
     }
-    return new CustomPaint(
-      painter: painter,
+    return new Text(
+      pageCalculator.content,
+      style: widget.textStyle,
+      textAlign: widget.textAlign,
+      textDirection: widget.textDirection,
     );
+//    return new CustomPaint(
+//      painter: painter,
+//    );
   }
 
   Widget pageBuilder(BuildContext context, int index) {
@@ -364,14 +394,15 @@ class PageState extends State<Page> {
                       !snapshot.hasError &&
                       snapshot.hasData) {
                     bookDecoder = snapshot.data;
-                    records.reset(
-                        pageSize: page,
-                        bookDecoder: bookDecoder,
-                        textStyle: widget.textStyle,
-                        textAlign: widget.textAlign,
-                        textDirection: widget.textDirection,
-                        maxLines: maxLines);
-                    return buildContent2(index);
+                    if (isShowMenu)
+                      records.reset(
+                          pageSize: page,
+                          bookDecoder: bookDecoder,
+                          textStyle: widget.textStyle,
+                          textAlign: widget.textAlign,
+                          textDirection: widget.textDirection,
+                          maxLines: maxLines);
+                    return buildContent(index);
                   } else {
                     return new Center(
                         child: new Text('Oops！${snapshot.error}'
@@ -407,8 +438,7 @@ class PageState extends State<Page> {
         textStyle: widget.textStyle,
         textAlign: widget.textAlign,
         textDirection: widget.textDirection);
-    painter =
-        new CustomTextPainter(textPainter: pageCalculator.textPainter);
+    painter = new CustomTextPainter(textPainter: pageCalculator.textPainter);
   }
 
   @override

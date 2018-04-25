@@ -121,11 +121,8 @@ class PageCalculator {
 
     // 最多循环20次
     for (int i = 0; i < 20; i++) {
-//      print(
-//          '================= start:$start mid: $mid end: $end ==================');
       if (layout(text.substring(0, mid))) {
         if (mid <= start || mid >= end) break;
-        ;
         // 未越界
         start = mid;
         mid = (start + end) ~/ 2;
@@ -145,9 +142,11 @@ class PageCalculator {
   bool layout(String text) {
     times++;
     text = text ?? '';
+    content = text;
     textPainter
       ..text = getTextSpan(text)
       ..layout(maxWidth: pageSize.width);
+//    textPainter.getPositionForOffset();
     return !didExceed;
   }
 
