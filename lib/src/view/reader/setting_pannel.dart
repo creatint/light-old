@@ -238,35 +238,35 @@ class _SettingPannelState extends State<SettingPannel> {
                                 shape: const CircleBorder(),
                                 iconData: Icons.format_align_justify,
                                 onPressed: () {
-                                  widget.handleSettings(Settings.lineHeight, 2);
+                                  widget.handleSettings(Settings.lineHeight, 1.0);
                                 },
                               ),
                               new CustomButton(
                                 shape: const CircleBorder(),
                                 iconData: Icons.view_headline,
                                 onPressed: () {
-                                  widget.handleSettings(Settings.fontSize, 2);
+                                  widget.handleSettings(Settings.lineHeight, 1.2);
                                 },
                               ),
                               new CustomButton(
                                 shape: const CircleBorder(),
                                 iconData: Icons.menu,
                                 onPressed: () {
-                                  widget.handleSettings(Settings.fontSize, 2);
+                                  widget.handleSettings(Settings.lineHeight, 1.4);
                                 },
                               ),
                               new CustomButton(
                                 shape: const CircleBorder(),
                                 iconData: Icons.drag_handle,
                                 onPressed: () {
-                                  widget.handleSettings(Settings.fontSize, 2);
+                                  widget.handleSettings(Settings.lineHeight, 1.6);
                                 },
                               ),
                               new CustomButton(
                                 shape: const CircleBorder(),
                                 iconData: Icons.remove,
                                 onPressed: () {
-                                  widget.handleSettings(Settings.fontSize, 2);
+                                  widget.handleSettings(Settings.lineHeight, 1.8);
                                 },
                               ),
                             ],
