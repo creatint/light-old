@@ -14,7 +14,8 @@ class PageCalculator {
         ..pageSize = size
         ..textStyle = textStyle
         ..textAlign = textAlign
-        ..textDirection = textDirection;
+        ..textDirection = textDirection
+        ..maxLines = maxLines;
     } else {
       _cache[key] = new PageCalculator._internal(
           size: size,
@@ -41,6 +42,7 @@ class PageCalculator {
           textAlign: textAlign,
           textDirection: textDirection,
           maxLines: maxLines,
+          ellipsis: null
         );
 
   static Map<String, PageCalculator> _cache = <String, PageCalculator>{};
@@ -69,11 +71,14 @@ class PageCalculator {
   /// 待绘制文本
   String content;
 
-  /// 待绘制文本长度
-  int length;
-
   /// 剪切掉的文本
   String clipped;
+
+  /// 文本截断位置
+  TextPosition textPosition;
+
+  /// 待绘制文本长度
+  int get length => textPosition.offset;
 
   /// 设置文本样式
   set textStyle(TextStyle textStyle) {
@@ -104,7 +109,10 @@ class PageCalculator {
 
   /// 获取带样式的文本对象
   TextSpan getTextSpan(String text) {
-    return new TextSpan(text: text, style: _textStyle);
+    return new TextSpan(
+      text: text,
+      style: _textStyle,
+    );
   }
 
   /// 接收内容
@@ -112,27 +120,13 @@ class PageCalculator {
   /// 计算完毕返回true
   bool load(String text) {
     if (layout(text)) {
+      // 未填满整页，需要追加内容
       return false;
     }
-
-    int start = 0;
-    int end = text.length;
-    int mid = (end + start) ~/ 2;
-
-    // 最多循环20次
-    for (int i = 0; i < 20; i++) {
-      if (layout(text.substring(0, mid))) {
-        if (mid <= start || mid >= end) break;
-        // 未越界
-        start = mid;
-        mid = (start + end) ~/ 2;
-      } else {
-        // 越界
-        end = mid;
-        mid = (start + end) ~/ 2;
-      }
-    }
-    length = mid;
+    // 已经填满整页
+    textPosition =
+        textPainter.getPositionForOffset(pageSize.bottomRight(Offset.zero));
+//    layout(text.substring(0, length));
     return true;
   }
 
@@ -146,7 +140,6 @@ class PageCalculator {
     textPainter
       ..text = getTextSpan(text)
       ..layout(maxWidth: pageSize.width);
-//    textPainter.getPositionForOffset();
     return !didExceed;
   }
 
