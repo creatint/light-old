@@ -11,3 +11,4 @@ packages
 .flutter-plugins
 
 key.properties
+*.log
