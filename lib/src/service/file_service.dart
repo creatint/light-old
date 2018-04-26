@@ -158,7 +158,7 @@ String charsetDetector(RandomAccessFile file) {
       i++;
     } while (i < bytes.length);
   }
-  if (!isLatin1 && !isLatin1) {
+  if (!isLatin1 && !isUtf8) {
     charset = 'gbk';
   } else if (!isLatin1 && isUtf8) {
     charset = 'utf8';
