@@ -49,6 +49,7 @@ class ReaderState extends State<Reader> {
       height: lineHeight,
       fontStyle: FontStyle.normal,
       fontWeight: FontWeight.normal,
+      fontFamily: 'HYQH',
       textBaseline: TextBaseline.ideographic
     );
   }
