@@ -2,7 +2,6 @@
 
 ![Light logo](https://user-images.githubusercontent.com/17924777/39092072-762deace-4636-11e8-8acd-447a03c7556e.png)
 
-## A light novel reader built on Flutter
 Light目前只为Android平台做了适配，你可以自己移植到iOS。
 
 Light contains platform-specific elements only for Android.<br>
@@ -72,7 +71,7 @@ Email: creatint@163.com
 
 QQ: 565864175
 
-QQ群:[![编程技术交流 (QQ群)](https://pub.idqqimg.com/wpa/images/group.png)](//shang.qq.com/wpa/qunwpa?idkey=b34e5d3956950dc053efdd7aef63ef75151c01cfff48a951c8fc53d6349b454a)
+QQ群: [![编程技术交流 (QQ群)](https://pub.idqqimg.com/wpa/images/group.png)](//shang.qq.com/wpa/qunwpa?idkey=b34e5d3956950dc053efdd7aef63ef75151c01cfff48a951c8fc53d6349b454a)
 
 
 ## License
