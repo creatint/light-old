@@ -7,6 +7,9 @@ import 'package:light/src/service/book_service.dart';
 import 'package:light/src/utils/page_calculator.dart';
 import 'package:light/src/utils/custom_text_painter.dart';
 
+///
+/// 错误代码：
+/// 001E2: 实例化BookDecoder失败
 class Page extends StatefulWidget {
   Page(
       {Key key,
@@ -63,10 +66,10 @@ class PageState extends State<Page> {
   SliverChildBuilderDelegate delegate;
 
   ///媒体显示尺寸
-  Size media;
+  Size _mediaSize;
 
   ///文字显示尺寸
-  Size _page;
+  Size pageSize;
 
   ///当前页码
   int pageNumber;
@@ -83,6 +86,12 @@ class PageState extends State<Page> {
   ///字块偏移值
   int sectionOffset = 0;
 
+  /// 最后字符的偏移
+  int lastOffset = 0;
+
+  /// 书籍字符长度
+  int _maxLength;
+
   ///是否倒序翻页
   bool reverse = false;
 
@@ -92,7 +101,7 @@ class PageState extends State<Page> {
   ///内容
   Section section;
 
-  int childCount = 1;
+  int childCount = 2;
 
   /// 用于计算点击手势区域的比例
   Map<String, List<int>> tapRatio = <String, List<int>>{
@@ -109,48 +118,41 @@ class PageState extends State<Page> {
   /// 阅读记录
   Record records;
 
-  /// 缓存内容
-  String cache;
-
   /// 是否正在显示菜单
   bool isShowMenu = false;
 
   /// 计算总次数
   int times = 0;
 
-  ///弹出缓存
-  String get popCache {
-    String _tmp = cache;
-    cache = null;
-    return _tmp;
+  /// 书籍内容最大长度
+  int get maxLength {
+    if (null != bookDecoder) {
+      if (null == _maxLength) {
+        _maxLength = bookDecoder.maxLength;
+      }
+    }
+    return _maxLength;
   }
 
-  ///逆序缓存内容
-  String rcache;
-
-  ///弹出逆序缓存
-  String get poprCache {
-    String _tmp = rcache;
-    rcache = null;
-    return _tmp;
-  }
-
-  void set page(Size size) {
-    if (size != _page) {
-      _page = size;
-      pageCalculator.pageSize = _page;
+  /// 设置媒体尺寸，同时更新pageSize和pageCalculator
+  set mediaSize(Size size) {
+    if (size != _mediaSize) {
+      _mediaSize = size;
+      pageSize = _mediaSize - new Offset(40.0, 60.0);
+      pageCalculator.pageSize = pageSize;
       _maxLines = null;
       pageCalculator.maxLines = maxLines;
     }
   }
 
-  Size get page => _page;
+  /// 获取媒体尺寸
+  Size get mediaSize => _mediaSize;
 
   ///处理屏幕改变事件
   void handleMediaChange(Size size) {
-    if (media != size) {
-      media = size;
-      print('media changed,is $media');
+    if (mediaSize != size) {
+      mediaSize = size;
+      print('mediaSize changed,is $mediaSize');
     }
   }
 
@@ -159,21 +161,22 @@ class PageState extends State<Page> {
     tapDownDetails = details;
   }
 
-  ///处理点击弹起事件
+  /// 处理点击弹起事件
+  /// 用于切换页面、打开菜单
   void handleTapUp(TapUpDetails tapUpDetails) {
     double x = tapUpDetails.globalPosition.dx;
     double y = tapUpDetails.globalPosition.dy;
     if (tapGrid.isEmpty) {
-      double x1 = media.width *
+      double x1 = mediaSize.width *
           (tapRatio['x'][0] /
               (tapRatio['x'][0] + tapRatio['x'][1] + tapRatio['x'][2]));
-      double x2 = media.width *
+      double x2 = mediaSize.width *
           ((tapRatio['x'][0] + tapRatio['x'][1]) /
               (tapRatio['x'][0] + tapRatio['x'][1] + tapRatio['x'][2]));
-      double y1 = media.height *
+      double y1 = mediaSize.height *
           (tapRatio['y'][0] /
               (tapRatio['y'][0] + tapRatio['y'][1] + tapRatio['y'][2]));
-      double y2 = media.height *
+      double y2 = mediaSize.height *
           ((tapRatio['y'][0] + tapRatio['y'][1]) /
               (tapRatio['y'][0] + tapRatio['y'][1] + tapRatio['y'][2]));
       tapGrid['x1'] = x1;
@@ -202,7 +205,7 @@ class PageState extends State<Page> {
           if (true == value) {
             // 弹出菜单，调用record.reset
             records.reset(
-                pageSize: page,
+                pageSize: pageSize,
                 bookDecoder: bookDecoder,
                 textStyle: widget.textStyle,
                 textAlign: widget.textAlign,
@@ -215,60 +218,8 @@ class PageState extends State<Page> {
     }
   }
 
-  ///试图更新页面时，更新页面数量
-  void handleHorizontalDragDown(DragDownDetails) {
-    int count;
-//    print('handleHorizontalDragDown cache.length=${cache?.length}');
-    if (null != cache && cache.length > 0) {
-      count = pageNumber + 2;
-    } else if (null == section || section.isLast) {
-//      print('null == section = ${null == section}');
-//      print('section.isLast = ${section?.isLast}');
-      count = pageNumber + 1;
-    } else if (!section.isLast) {
-//      print('!section.isLast = ${!section?.isLast}');
-      count = pageNumber + 2;
-    }
-    if (count != childCount)
-      setState(() {
-        childCount = count;
-      });
-  }
-
-  ///[value]==true，下一页，[value]==false，上一页
-  void handlePageChanged(bool next) {
-    if (next) {
-//      print('下一页');
-      if (true == section?.isLast) {
-        print('最后一页了');
-        return;
-      }
-      controller.nextPage(
-          duration: const Duration(milliseconds: 400), curve: Curves.easeInOut);
-    } else {
-//      print('上一页');
-      controller.previousPage(
-          duration: const Duration(milliseconds: 400), curve: Curves.easeInOut);
-    }
-  }
-
-  ///根据偏移值获取字块
-  ///无内容则返回null
-  Section getSection(int offset, [int length]) {
-//    if (null != cache && cache.length >= sectionSize)
-//      return new Section(text: popCache);
-    section =
-        bookDecoder.getSection(offset: offset, length: length ?? sectionSize);
-//    print('section.isLast=${section.isLast}');
-    if (null != section && section.isNotEmpty) {
-      return section;
-//      if (reverse)
-//        return section..text += (popCache ?? '');
-//      else
-//        return section..text = (popCache ?? '') + section.text;
-    }
-    return null;
-  }
+  /// 是否有下一页
+  bool get hasNextPage => lastOffset < maxLength;
 
   ///标题样式的获取
   TextStyle get titleStyle => Theme
@@ -277,30 +228,70 @@ class PageState extends State<Page> {
       .title
       .copyWith(fontSize: 14.0, color: Theme.of(context).disabledColor);
 
+  /// 计算每页显示行数
   int get maxLines {
     if (null == _maxLines) {
       double lineHeight =
           1.1667 * widget.textStyle.fontSize * widget.textStyle.height;
-      _maxLines = page.height ~/ lineHeight;
+      _maxLines = pageSize.height ~/ lineHeight;
     }
     return _maxLines;
   }
 
   ///获取标题
-  String getTitle() {
-//    print('获取标题:${section?.title ?? bookDecoder?.book?.title ?? ''}');
+  String get title {
     return section?.title ?? bookDecoder?.book?.title ?? '';
+  }
+
+  /// 每次切换
+  void handlePageScroll() {
+    if (controller.page % 1 == 0.0) {
+      int count = childCount;
+      if (hasNextPage && (pageNumber + 1) == count) {
+        count = childCount + 1;
+      }
+      if (count != childCount)
+        setState(() {
+          childCount = count;
+        });
+    }
+  }
+
+  ///[value]==true，下一页，[value]==false，上一页
+  void handlePageChanged(bool next) {
+    if (next) {
+      // 下一页
+      if (!hasNextPage) {
+        print('最后一页了');
+        return;
+      }
+      controller.nextPage(
+          duration: const Duration(milliseconds: 400), curve: Curves.easeInOut);
+    } else {
+      // 上一页
+      controller.previousPage(
+          duration: const Duration(milliseconds: 400), curve: Curves.easeInOut);
+    }
+  }
+
+  ///根据偏移值获取字块
+  ///无内容则返回null
+  Section getSection(int offset, [int length]) {
+    section =
+        bookDecoder.getSection(offset: offset, length: length ?? sectionSize);
+//    print('section.isLast=${section.isLast}');
+    if (null != section && section.isNotEmpty) {
+      return section;
+    }
+    return null;
   }
 
   // 构建内容页面
   Widget buildContent(int index) {
-    print('buildContent@Page index=$index');
-//    print('page=$page');
-//    print('maxLines=$maxLines');
+//    print('buildContent@Page index=$index');
     // 页码非当前页，则计算页码，否则直接显示当前页面
-    if (index != pageNumber) {
+    if (index != pageNumber || null == pageNumber) {
       pageNumber = index;
-      cache = null;
 
       ///存在当前分页数据，直接获取内容
       if (records.containsKey(index)) {
@@ -310,9 +301,11 @@ class PageState extends State<Page> {
       } else if (records.containsKey(index - 1)) {
         ///存在上一页面数据,获取下一页内容
         // 计算下一页偏移值
+        print('计算下一页偏移值');
         int offset = records[index - 1][0] + records[index - 1][1];
         // 最大循环100次，正常情况下10次左右
         for (int i = 1; i < 100; i++) {
+          print('flag');
           Section section = getSection(offset, sectionSize * i);
           if (pageCalculator.load(section.text)) {
             records[index] = [offset, pageCalculator.length];
@@ -321,40 +314,50 @@ class PageState extends State<Page> {
           }
         }
         times += pageCalculator.times;
-        print('计算 ${pageCalculator.times} 次\n'
-            '平均每页计算 ${times / (index + 1) * 10 ~/ 1 / 10}\n'
-            '共计算 ${times} 次');
+//        print('计算 ${pageCalculator.times} 次\n'
+//            '平均每页计算 ${times / (index + 1) * 10 ~/ 1 / 10}\n'
+//            '共计算 $times 次');
         pageCalculator.times = 0;
       } else {
+        print('flag3');
         for (int i = 1; i < 100; i++) {
           Section section = getSection(sectionOffset, sectionSize * i);
-          if (pageCalculator.load(section.text)) {
+          print(section);
+          if (null != section && section.isLast == true) {
+            pageCalculator.load(section.text);
             records[index] = [sectionOffset, pageCalculator.length];
-            print('分页(3)：${records[index]}');
+            print('分页(3.1)：${records[index]}');
             break;
+          } else if (pageCalculator.load(section.text)) {
+            records[index] = [sectionOffset, pageCalculator.length];
+            print('分页(3.2)：${records[index]}');
+            break;
+          } else {
+            print('false');
+            pageCalculator.load('获取文件失败：001E3');
           }
         }
         times += pageCalculator.times;
         print('计算 ${pageCalculator.times} 次\n'
             '平均每页计算 ${times / (index + 1) * 10 ~/ 1 / 10}\n'
-            '共计算 ${times} 次');
+            '共计算 $times 次');
         pageCalculator.times = 0;
-        return new Text('错误码：001E1');
       }
     }
-//    return new Text(
-//      pageCalculator.content,
-//      style: widget.textStyle,
-//      textAlign: widget.textAlign,
-//      textDirection: widget.textDirection,
-//    );
-    return new CustomPaint(
-      painter: painter,
+
+    // 更新最后字符的偏移
+    lastOffset = records[index][0] + records[index][1];
+    return new Text(
+      pageCalculator.content,
+      style: widget.textStyle,
+      textAlign: widget.textAlign,
+      textDirection: widget.textDirection,
+      maxLines: maxLines,
     );
   }
 
   Widget pageBuilder(BuildContext context, int index) {
-    print('pageBuilder@Page index=$index pageNumber=$pageNumber');
+//    print('pageBuilder@Page index=$index pageNumber=$pageNumber');
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 20.0),
       decoration: new BoxDecoration(
@@ -369,45 +372,14 @@ class PageState extends State<Page> {
               children: <Widget>[
                 new Container(
                     child: new Text(
-                  getTitle(),
+                  title,
                   style: titleStyle,
                 )),
               ],
             ),
           ),
           new Expanded(
-            child: new LayoutBuilder(
-                builder: (BuildContext context, BoxConstraints constraints) {
-              // 刷新页面尺寸
-              page = new Size(constraints.maxWidth, constraints.maxHeight);
-              return new FutureBuilder(
-                future: widget.bookDecoderFuture,
-                builder: (BuildContext context,
-                    AsyncSnapshot<BookDecoder> snapshot) {
-                  if (snapshot.connectionState == ConnectionState.waiting) {
-                    return new Center(child: new Text('读取中...'));
-                  } else if (snapshot.connectionState == ConnectionState.done &&
-                      !snapshot.hasError &&
-                      snapshot.hasData) {
-                    bookDecoder = snapshot.data;
-                    // 显示菜单时不刷新整书分页
-                    if (!isShowMenu)
-                      records.reset(
-                          pageSize: page,
-                          bookDecoder: bookDecoder,
-                          textStyle: widget.textStyle,
-                          textAlign: widget.textAlign,
-                          textDirection: widget.textDirection,
-                          maxLines: maxLines);
-                    return buildContent(index);
-                  } else {
-                    return new Center(
-                        child: new Text('Oops！${snapshot.error}'
-                            '\n错误代码：001E2'));
-                  }
-                },
-              );
-            }),
+            child: buildContent(index),
           ),
           new Container(
             height: 30.0,
@@ -430,6 +402,7 @@ class PageState extends State<Page> {
     super.initState();
     records = new Record(prefs: widget.prefs);
     controller = new PageController();
+    controller.addListener(handlePageScroll);
     pageCalculator = new PageCalculator(
         key: 'page',
         textStyle: widget.textStyle,
@@ -439,33 +412,61 @@ class PageState extends State<Page> {
   }
 
   @override
-  void dispose() {
-    records.close();
-    super.dispose();
-  }
-
-  @override
   Widget build(BuildContext context) {
-    print('build@Page');
+//    print('build@Page');
     return new Scaffold(
       body: new LayoutBuilder(
         builder: (BuildContext context, BoxConstraints constraints) {
           handleMediaChange(
               new Size(constraints.maxWidth, constraints.maxHeight));
-          return GestureDetector(
-            onTapUp: handleTapUp,
-            onTapDown: handleTapDown,
-            onHorizontalDragDown: handleHorizontalDragDown,
-            child: new PageView.custom(
-              key: new Key(widget.currentReadModeId.toString()),
-              controller: controller,
-              scrollDirection: Axis.horizontal,
-              childrenDelegate: new SliverChildBuilderDelegate(pageBuilder,
-                  childCount: childCount),
-            ),
-          );
+          return new FutureBuilder(
+              future: widget.bookDecoderFuture,
+              builder:
+                  (BuildContext context, AsyncSnapshot<BookDecoder> snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return new Center(child: new Text('读取中...'));
+                } else if (snapshot.connectionState == ConnectionState.done &&
+                    !snapshot.hasError &&
+                    snapshot.hasData) {
+                  bookDecoder = snapshot.data;
+                  // 显示菜单时不刷新整书分页
+                  if (!isShowMenu)
+                    records.reset(
+                        pageSize: pageSize,
+                        bookDecoder: bookDecoder,
+                        textStyle: widget.textStyle,
+                        textAlign: widget.textAlign,
+                        textDirection: widget.textDirection,
+                        maxLines: maxLines);
+                  return GestureDetector(
+                    onTapUp: handleTapUp,
+                    onTapDown: handleTapDown,
+                    child: new PageView.custom(
+                      key: new Key(widget.currentReadModeId.toString()),
+                      controller: controller,
+                      scrollDirection: Axis.horizontal,
+                      childrenDelegate: new SliverChildBuilderDelegate(
+                          pageBuilder,
+                          childCount: childCount,
+                          addRepaintBoundaries: false,
+                          addAutomaticKeepAlives: false),
+                    ),
+                  );
+                } else {
+                  String err = 'Oops！${snapshot.error}'
+                      '\n错误代码：001E2';
+                  print(err);
+                  return new Center(child: new Text(err));
+                }
+              });
         },
       ),
     );
+  }
+
+  @override
+  void dispose() {
+    records.close();
+    super.dispose();
   }
 }
