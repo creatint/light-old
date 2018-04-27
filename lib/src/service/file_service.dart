@@ -137,14 +137,18 @@ Image getImage(String uri) {
 }
 
 String charsetDetector(RandomAccessFile file) {
-  String charset = 'utf8';
+  String charset;
   List<int> bytes = file.readSync(3);
   int length = file.lengthSync();
   bool isLatin1 = true;
   bool isUtf8 = true;
-  if (bytes[0] == 0xEF && bytes[1] == 0xBB && bytes[2] == 0xBF) {
+  if (null != bytes &&
+      bytes.length == 3 &&
+      bytes[0] == 0xEF &&
+      bytes[1] == 0xBB &&
+      bytes[2] == 0xBF) {
     isLatin1 = false;
-  } else {
+  } else if (null != bytes && bytes.isNotEmpty) {
     //不带bom头，可能是gbk,latin1,utf8,big5
     bytes = file.readSync(100 > length ? length : 100);
     int i = 0;
