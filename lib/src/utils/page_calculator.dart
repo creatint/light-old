@@ -121,13 +121,15 @@ class PageCalculator {
   bool load(String text) {
     if (layout(text)) {
       // 未填满整页，需要追加内容
+      textPosition =
+          textPainter.getPositionForOffset(pageSize.bottomRight(Offset.zero));
       return false;
+    } else {
+      // 已经填满整页
+      textPosition =
+          textPainter.getPositionForOffset(pageSize.bottomRight(Offset.zero));
+      return true;
     }
-    // 已经填满整页
-    textPosition =
-        textPainter.getPositionForOffset(pageSize.bottomRight(Offset.zero));
-//    layout(text.substring(0, length));
-    return true;
   }
 
   /// 计算待绘制文本
