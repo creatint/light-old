@@ -255,7 +255,7 @@ class BookDecoder {
 
   /// 运行与isolate的初始化方法，获取全书内容
   static void _init(SendPort sendPort) {
-    print('_init@BookDecoder');
+//    print('_init@BookDecoder');
 
     /// 接收外部消息的接口
     ReceivePort receivePort = new ReceivePort();
@@ -271,7 +271,6 @@ class BookDecoder {
       try {
         // 如果是'close'，则关闭监听
         if ('close' == msg) {
-          print('isolate close...');
           receivePort.close();
           return;
         }
@@ -280,6 +279,7 @@ class BookDecoder {
         /// 不合法则抛出异常
         ///
         /// msg[0]必须是发送接口
+        print('msg: $msg');
         if (msg[0] is SendPort) {
           response = msg[0];
         } else {
@@ -301,11 +301,11 @@ class BookDecoder {
 
         switch (book.bookType) {
           case BookType.txt:
-            print('book type is text');
+//            print('book type is text');
             RandomAccessFile randomAccessFile =
                 file.openSync(mode: FileMode.READ);
             String codeType = charsetDetector(randomAccessFile);
-            print('charset is $codeType');
+//            print('charset is $codeType');
             switch (codeType) {
               case 'gbk':
                 response.send('gbk');
@@ -317,12 +317,14 @@ class BookDecoder {
               case 'latin1':
                 content = latin1.decode(file.readAsBytesSync());
                 break;
+              default:
+                content = '无内容';
             }
             randomAccessFile.close();
             res = {'content': content};
             break;
           case BookType.epub:
-            print('book type is epub');
+//            print('book type is epub');
             SplayTreeMap<int, EpubChapter> chapters =
                 new SplayTreeMap<int, EpubChapter>();
 //            List<int> bytes = file.readAsBytesSync();
@@ -370,8 +372,9 @@ class BookDecoder {
 
         // 发送结果
         response.send(res);
-      } catch (e) {
-        sendPort.send(e);
+      }  catch (e) {
+        print('error: $e');
+        throw e;
       }
     });
   }
@@ -384,11 +387,11 @@ class BookDecoder {
   /// 好让上级isolate解码gbk文件
   static Future<BookDecoder> init(
       {@required Book book, SendPort parentPort, String text}) async {
-    print('init book decoder');
+//    print('init book decoder');
 
     // 如果存在此书籍的实例，则直接返回
     if (_cache.containsKey(book)) {
-      print('已存在bokDecoder');
+//      print('已存在bokDecoder');
       return _cache[book];
     }
 
@@ -439,7 +442,7 @@ class BookDecoder {
 
     /// 发送计算指令，并返回结果
     var res = await sendReceive(sendPort, book);
-    print('回消息了 $res');
+//    print('回消息了 $res');
 
     /// 如果是异常，则抛出
     if (res is Exception) {
@@ -451,7 +454,7 @@ class BookDecoder {
       /// 则直接调用平台代码解析gbk文本
       if ('gbk' == res && null == parentPort) {
         content = await getContentFromPlatform(book);
-        print('是gbk文件，获取content');
+//        print('是gbk文件，获取content');
       } else if ('gbk' == res && null != parentPort) {
         /// 如果parentPort存在，则发送'gbk'字符串消息
         content = await sendReceive(parentPort, 'gbk');
@@ -651,6 +654,10 @@ class Section {
   int get hashCode => offset;
 
   operator ==(sec) => this.offset == sec.offset;
+
+  @override
+  String toString() => 'Instance of Section{title: $title, offset: '
+      '$offset, length: ${text?.length}, isLast: $isLast';
 }
 
 ///判断文件是否是电子书资源
