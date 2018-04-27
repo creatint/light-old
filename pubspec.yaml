@@ -60,6 +60,22 @@ flutter:
    - assets/background/bg10.png
    - assets/background/bg11.png
 
+  fonts:
+   - family: Lora
+     fonts:
+       - asset: assets/font/Lora-Regular.ttf
+   - family: HYQH
+     fonts:
+       - asset: assets/font/HYQH.ttf
+   - family: FZYouH
+     fonts:
+       - asset: assets/font/FZYouH.ttf
+   - family: Avenir
+     fonts:
+       - asset: assets/font/Avenir.ttf
+   - family: Noto
+     fonts:
+       - asset: assets/font/Noto Serif.ttf
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.io/assets-and-images/#resolution-aware.
 
