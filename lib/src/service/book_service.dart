@@ -218,49 +218,87 @@ class BookService {
 }
 
 class BookDecoder {
-  BookDecoder({@required this.book, this.chapters, this.catelogs, this.content})
-      : type = book.bookType;
+  BookDecoder({
+    @required this.book,
+    this.chapters,
+    this.catelogs,
+    this.content,
+  }) : type = book.bookType;
 
+  /// Book实例
   final Book book;
+
+  /// Book类型
   final BookType type;
 
+  /// 实例缓存
   static Map<Book, BookDecoder> _cache = {};
 
-  static const platform = const MethodChannel('light.yotaku.cn/system');
+  /// 全书内容
+  String content;
 
-  String content; //全部内容
+  /// 字节码
   List<int> bytes;
+
+  /// epub实例
   EpubBook epubBook;
-  int byteSize = 1110; //每页字节数
-  int position = 0; //起始位置
-  int currPN = 1; //当前页码
-  int maxPN; //最大页码
-  int _maxLength = 0; //text文本最大长度
+
+  /// text文本最大长度
+  int _maxLength = 0;
+
   int _sectionSize;
   int _maxSectionOffset;
-  Future<String> prevSection;
-  Future<String> currSection;
-  Future<String> nextSection;
+
   SplayTreeMap<int, EpubChapter> chapters;
-  SplayTreeMap<int, Section> sections = new SplayTreeMap<int, Section>();
 
   List<Catelog> catelogs;
-  String cache;
 
-  static Future _init(SendPort sendPort) async {
+  /// 运行与isolate的初始化方法，获取全书内容
+  static void _init(SendPort sendPort) {
     print('_init@BookDecoder');
+
+    /// 接收外部消息的接口
     ReceivePort receivePort = new ReceivePort();
+
+    /// 向宿主isolate发送sendPort
     sendPort.send(receivePort.sendPort);
-    await for (var msg in receivePort) {
-      if ('close' == msg) {
-        receivePort.close();
-        return;
-      }
-      var result;
-      SendPort response = msg[0];
-      Book book = msg[1];
-      File file = new File(book.uri);
+
+    /// 监听消息
+    receivePort.listen((msg) {
+      var response;
+      var res;
+      Book book;
       try {
+        // 如果是'close'，则关闭监听
+        if ('close' == msg) {
+          print('isolate close...');
+          receivePort.close();
+          return;
+        }
+
+        /// 检查消息结构是否合法
+        /// 不合法则抛出异常
+        ///
+        /// msg[0]必须是发送接口
+        if (msg[0] is SendPort) {
+          response = msg[0];
+        } else {
+          sendPort.send(new Exception('消息结构不正确，msg[0]不是SendPort'));
+        }
+
+        /// msg[1]必须是Book
+        if (msg[1] is Book) {
+          book = msg[1];
+        } else {
+          sendPort.send(new Exception('消息结构不正确，msg[1]不是Book'));
+        }
+
+        // 文件
+        File file = new File(book.uri);
+
+        // 整书内容
+        String content;
+
         switch (book.bookType) {
           case BookType.txt:
             print('book type is text');
@@ -268,11 +306,10 @@ class BookDecoder {
                 file.openSync(mode: FileMode.READ);
             String codeType = charsetDetector(randomAccessFile);
             print('charset is $codeType');
-            String content;
             switch (codeType) {
               case 'gbk':
                 response.send('gbk');
-                break;
+                return;
               case 'utf8':
                 content =
                     utf8.decode(file.readAsBytesSync(), allowMalformed: true);
@@ -282,17 +319,17 @@ class BookDecoder {
                 break;
             }
             randomAccessFile.close();
-            result = {'content': content};
+            res = {'content': content};
             break;
           case BookType.epub:
             print('book type is epub');
             SplayTreeMap<int, EpubChapter> chapters =
                 new SplayTreeMap<int, EpubChapter>();
-            List<int> bytes = file.readAsBytesSync();
+//            List<int> bytes = file.readAsBytesSync();
             EpubBook epub;
             List<Catelog> catelogs = <Catelog>[];
             try {
-              epub = await EpubReader.readBook(bytes);
+//            epub = await EpubReader.readBook(bytes);
             } catch (e) {
               print('error... $e');
             }
@@ -321,7 +358,7 @@ class BookDecoder {
 //                epubBook: epub,
 //                chapters: chapters,
 //                catelogs: catelogs);
-            result = {'content': 'epub'};
+            res = {'content': 'epub'};
             break;
           case BookType.pdf:
             break;
@@ -330,47 +367,120 @@ class BookDecoder {
           case BookType.urls:
             break;
         }
-        response.send(result);
+
+        // 发送结果
+        response.send(res);
       } catch (e) {
-        print('Decode Error: $e');
-        return;
+        sendPort.send(e);
       }
-    }
+    });
   }
 
-  ///异步初始化书籍文件
-  static Future<BookDecoder> init({@required Book book}) async {
+  /// 内容实例
+  ///
+  /// 可能在main isolate中调用，也可能在second isolate中调用
+  /// 如果txt文件是gbk格式，则从second isolate中返回'gbk'
+  /// 如果parentPort不为空切格式为gbk，则向parentPort发送消息，
+  /// 好让上级isolate解码gbk文件
+  static Future<BookDecoder> init(
+      {@required Book book, SendPort parentPort, String text}) async {
     print('init book decoder');
+
+    // 如果存在此书籍的实例，则直接返回
     if (_cache.containsKey(book)) {
       print('已存在bokDecoder');
       return _cache[book];
     }
+
+    // 如果text不为空，则直接返回BookDecoder实例
+    if (null != text && text.isNotEmpty) {
+      _cache[book] = new BookDecoder(book: book, content: text);
+      return _cache[book];
+    }
+
+    // 书籍内容
     String content;
+
+    // 消息接口
     ReceivePort receivePort = new ReceivePort();
-    Stream receive = receivePort.asBroadcastStream();
+
+    /// 消息流
+    Stream msgStream = receivePort.asBroadcastStream();
+
+    // 异常接口
+    ReceivePort errorReceivePort = new ReceivePort();
+
+    // 退出通知接口
+    ReceivePort exitReceivePort = new ReceivePort();
+
+    // 创建isolate
     Isolate isolate = await Isolate.spawn(_init, receivePort.sendPort,
-        onError: receivePort.sendPort, onExit: receivePort.sendPort);
-    SendPort sendPort = await receive.first;
-    dynamic res = await sendReceive(sendPort, book);
-    if ('gbk' == res) {
-      var platform = const MethodChannel('light.yotaku.cn/system');
-      try {
-        content = await platform.invokeMethod('readFile', {'path': book.uri});
-      } on PlatformException catch (e) {
-        print('readFile@Java Error: ${e.message}');
+        onError: errorReceivePort.sendPort,
+        onExit: exitReceivePort.sendPort,
+        errorsAreFatal: true);
+
+    /// 用于向isolate发送消息的接口
+    SendPort sendPort = await msgStream.first;
+
+    /// 监听错误
+    errorReceivePort.listen((e) {
+      print('错误消息：$e');
+    });
+
+    /// 监听退出通知
+    exitReceivePort.listen((e) {
+      print('isolate退出通知：$e');
+    });
+
+    /// 监听消息
+    msgStream.listen((msg) {
+      print('receive msg: $msg');
+    });
+
+    /// 发送计算指令，并返回结果
+    var res = await sendReceive(sendPort, book);
+    print('回消息了 $res');
+
+    /// 如果是异常，则抛出
+    if (res is Exception) {
+      throw res;
+    }
+
+    if (res is String) {
+      /// 如果为'gbk'且parentPort不存在
+      /// 则直接调用平台代码解析gbk文本
+      if ('gbk' == res && null == parentPort) {
+        content = await getContentFromPlatform(book);
+        print('是gbk文件，获取content');
+      } else if ('gbk' == res && null != parentPort) {
+        /// 如果parentPort存在，则发送'gbk'字符串消息
+        content = await sendReceive(parentPort, 'gbk');
+      } else {
+        throw res;
       }
     }
-    // 关闭isolate
+
+    /// 如果是Map，且res['content']存在内容
+    /// 则实例化BookDecoder并返回
+    if (res is Map && res.containsKey('content')) {
+      content = res['content'];
+    }
+
+    // 实例化BookDecoder
+    _cache[book] = new BookDecoder(book: book, content: content);
+
+    // 结束isolate
     sendPort.send('close');
     isolate.kill(priority: Isolate.beforeNextEvent);
     isolate = null;
+    msgStream = null;
+    exitReceivePort.close();
+    exitReceivePort = null;
+    errorReceivePort.close();
+    errorReceivePort = null;
+    receivePort.close();
+    receivePort = null;
 
-    if (res is Map && res.containsKey('content'))
-      _cache[book] = new BookDecoder(book: book, content: res['content']);
-    else if (null != content)
-      _cache[book] = new BookDecoder(book: book, content: content);
-    else
-      return null;
     return _cache[book];
   }
 
@@ -420,7 +530,7 @@ class BookDecoder {
   ///获取字块
   dynamic getSection({int offset, int length, bool raw}) {
 //    print('getSection@bookService offset=$offset length=$length');
-    if (sections.containsKey(offset)) return sections[offset];
+//    if (sections.containsKey(offset)) return sections[offset];
     String title;
     String text = '';
     bool isLast = false;
@@ -535,10 +645,10 @@ class Section {
 
   bool get isNotEmpty => null != text ? text.isNotEmpty : false;
 
-  bool get IsEmpty => null != text ? text.isEmpty : true;
+  bool get isEmpty => null != text ? text.isEmpty : true;
 
   @override
-  int get hash => offset;
+  int get hashCode => offset;
 
   operator ==(sec) => this.offset == sec.offset;
 }
@@ -596,6 +706,8 @@ class Record {
   ///用于接收消息的接口
   static ReceivePort receivePort;
   static Stream receiveStream;
+  static ReceivePort errorReceivePort;
+  static ReceivePort exitReceivePort;
 
   ///用于发送消息的接口
   static SendPort sendPort;
@@ -603,7 +715,6 @@ class Record {
   /// 当前是否有计算isolate
   /// 当前key是否处于计算中
   static Map<String, bool> isCalculating = <String, bool>{'default': false};
-
 
   ///重置key
   reset({
@@ -614,15 +725,29 @@ class Record {
     @required textDirection,
     @required maxLines,
   }) async {
-//    return;
+    return;
     print('reset@Record');
 
+    /// 页面尺寸
     this.pageSize = pageSize;
+
+    /// BookDecoder实例
     this.bookDecoder = bookDecoder;
+
+    /// 文字样式
     this.textStyle = textStyle;
+
+    /// 排版样式
     this.textAlign = textAlign;
+
+    /// 文字阅读方向
     this.textDirection = textDirection;
+
+    /// 最大行
     this.maxLines = maxLines;
+
+    /// 当前书籍缓存数据
+    Map<String, Map> data;
 
     try {
       // 计算当前分页key
@@ -638,64 +763,127 @@ class Record {
       }
       //key值不相等，尝试获取当前分页key的对应的分页缓存
       print('key值不相等，尝试获取当前分页key的对应的分页缓存');
-      Map<String, Map> data;
+
       try {
         data = json.decode(prefs.getString(bookDecoder.book.title));
-      } on NoSuchMethodError catch (e) {
-        print('不存在缓存');
-      }
-      print(data);
-      // 存在缓存
-      if (null != data &&
-          data.containsKey('record') &&
-          data['record'].containsKey(_key)) {
-        //存在分页缓存，替换到当前
-        key = _key;
-        records = data['record'][_key];
-        return;
-      }
-      // 不存在缓存
-      if (isCalculating['default'] &&
-          isCalculating.containsKey(_key) &&
-          isCalculating[_key]) {
-        // 当前书籍的分页计算进程正在执行，直接退出
-        print('当前书籍的分页计算进程正在执行，直接退出');
-        return;
-      } else if (isCalculating['default'] &&
-          (!isCalculating.containsKey(_key) || !isCalculating[_key])) {
-        // 当前有正在计算的进程，但不是当前书籍的计算进程则停止
-        print('当前有正在计算的进程，但不是当前书籍的计算进程则停止');
-        if (null != isolate) {
-          sendPort?.send('close');
-          sendPort = null;
-          receiveStream = null;
-          receivePort?.close();
-          isolate.kill(priority: Isolate.immediate);
-          isolate = null;
+        // 存在缓存
+        print('当前书籍缓存数据: $data');
+        if (null != data &&
+            data.containsKey('record') &&
+            data['record'].containsKey(_key)) {
+          //存在分页缓存，替换到当前，并返回
+          key = _key;
+          records = data['record'][_key];
+          return;
+        }
+      } catch (e) {
+        // 不存在缓存
+        print('当前书籍不存在缓存 E: $e');
+
+        /// 检查当前书籍分页是否处于计算中
+        /// 在计算则退出
+        if (isCalculating['default'] &&
+            isCalculating.containsKey(_key) &&
+            isCalculating[_key]) {
+          // 当前书籍的分页计算进程正在执行，直接返回
+          print('当前书籍的分页计算进程正在执行，直接退出');
+          return;
         }
       }
-      // 开启计算进程
-      print('开启进程');
+
+      /// 未计算当前书籍
+      /// 开启second isolate时先尝试关闭以节约资源
+      close();
+
+      // 开启计算进程，修改状态
+      print('开启isolate进程');
       isCalculating['default'] = true;
       isCalculating[_key] = true;
 
-      // 接收者
+      // 消息接收接口
       receivePort = new ReceivePort();
 
-      // 广播接收者
+      // 消息流
       receiveStream = receivePort.asBroadcastStream();
 
-      // 生成isolate
-      isolate = await Isolate.spawn(calculate, receivePort.sendPort);
+      // 异常接口
+      errorReceivePort = new ReceivePort();
 
-      // 接收发送者
-      if (null == sendPort) sendPort = await receiveStream.first;
+      // 退出通知接口
+      exitReceivePort = new ReceivePort();
 
-      // 发送数据，用于分页计算
+      /// 监听错误
+      errorReceivePort.listen((e) {
+        print('错误消息：$e');
+      });
+
+      /// 监听退出通知
+      exitReceivePort.listen((e) {
+        print('isolate退出通知：$e');
+      });
+
+      // 创建second isolate
+      isolate = await Isolate.spawn(calculate, receivePort.sendPort,
+          onExit: exitReceivePort.sendPort,
+          onError: errorReceivePort.sendPort,
+          errorsAreFatal: true);
+
+      // 向second isolate发送消息的SendPort
+      sendPort = await receiveStream.first;
+
+      // sendPort必须存在
       if (null == sendPort) {
-        print('获取发送者失败');
-        return;
+        print('获取second isolate SendPort失败');
+        throw new Exception('获取second isolate SendPort失败');
       }
+
+      /// 监听消息
+      /// 计算进度、计算结果、gbk事件
+      receiveStream.listen((value) {
+        /// 如果third isolate要解码的txt文本是gbk格式
+        /// 由main isolate解码，并返回文本内容
+        if (value is List && value[0] is SendPort && value[1] == 'gbk') {
+          print('third isolate解码gbk，main isolate');
+          SendPort response = value[0];
+          return getContentFromPlatform(bookDecoder.book).then((text) {
+            response.send(text);
+          });
+        }
+
+        // 计算的进度消息
+        if (value is Map && 'active' == value['state']) {
+          print('进度：${value['process']}%，'
+              '页码：${value['number']}，'
+              '长度：${value['length']}，'
+              '平均长度：${value['eveLength']}，'
+              '计算：${value['times']} 次，'
+              '总计算：${value['totalTimes']} 次，'
+              '平均计算：${value['aveTimes']} 次，'
+              '用时：${value['time']} ms，'
+              '平均用时 ${value['aveTime']} ms');
+        } else if (value is Map && 'done' == value['state']) {
+          // 计算完成
+          key = _key;
+          records = value['records'];
+          print('计算完成，共 ${value['length']}字符，共 ${records.length} '
+              '页，循环：${value['loopTimes']}次\n'
+              '总用时 ${value['time']} s '
+              '平均用时 ${value['aveTime']} ms\n'
+              '总计算 ${value['times']} 次 '
+              '平均计算 ${value['aveTimes']} 次');
+
+          // 更改计算状态
+          isCalculating['default'] = false;
+          isCalculating[_key] = false;
+
+          // 关闭isolate
+          close();
+        } else {
+          print('value=$value');
+        }
+      });
+
+      // 发送数据，开始分页计算
       sendPort.send({
         'book': bookDecoder.book,
         'textStyle': textStyle,
@@ -704,125 +892,146 @@ class Record {
         'maxLines': maxLines,
         'pageSize': pageSize
       });
-
-      print('开始计算分页，总长度：${bookDecoder.maxLength}');
-
-      int time1 = new DateTime.now().millisecondsSinceEpoch;
-      //监听状态
-      receiveStream.listen((value) {
-        if ('active' == value['state']) {
-//          print('${value['record']}');
-          print('进度：${value['process']}%，'
-              '页码：${value['number']}，'
-              '长度：${value['length']}，'
-              '平均长度：${value['elength']}，'
-              '计算：${value['renderTimes']} 次，'
-              '平均计算：${value['totalRenderTimes'] / value['number'] * 10 ~/1/10} 次，'
-              '用时：${value['time']} ms，'
-              '平均用时 ${(value['totalTime'] - time1) / value['number'] * 10 ~/
-              1 / 10} ms');
-        } else if ('done' == value['state']) {
-          // 计算完成
-          key = _key;
-          records = value['records'];
-          int time2 = new DateTime.now().millisecondsSinceEpoch;
-          print('计算完成，共 ${value['length']}字符，共 ${records.length} '
-              '页，循环：${value['loopTimes']}次\n'
-              '总用时 ${(time2 - time1) / 100 ~/ 10} s '
-              '平均用时 ${(time2 - time1) / records.length * 10 ~/ 1 / 10} ms\n'
-              '总计算 ${value['renderTimes']} 次 '
-              '平均计算 ${value['renderTimes'] / records.length * 10 ~/ 1 /
-              10} 次');
-          // 更改标识
-          isCalculating['default'] = false;
-          isCalculating[_key] = false;
-          // 关闭isolate
-          if (null != isolate) {
-            sendPort?.send('close');
-            sendPort = null;
-            receiveStream = null;
-            receivePort?.close();
-            isolate.kill(priority: Isolate.immediate);
-            isolate = null;
-          }
-        }
-      });
     } catch (e) {
       print('Error@Record: $e ${e.toString()}');
       return;
     }
   }
 
-  static Future calculate(SendPort sendPort) async {
+  /// 计算整书分页数据
+  ///
+  /// 运行在second isolate中
+  static void calculate(SendPort sendPort) {
     print('calculate@Record');
-    BookDecoder bookDecoder;
-    ReceivePort receivePort = new ReceivePort();
-    sendPort.send(receivePort.sendPort);
-    int times = 0;//渲染次数
-    await for (dynamic msg in receivePort) {
-      print('接收到：$msg');
-      if ('close' == msg) {
-        receivePort.close();
-        return;
-      }
-      if (msg is Map && !msg.containsKey('book')) {
-        continue;
-      }
-      bookDecoder = await BookDecoder.init(book: msg['book']);
-      if (null == pageCalculator)
-        pageCalculator = new PageCalculator(
-            key: 'book',
-            size: msg['pageSize'],
-            textStyle: msg['textStyle'],
-            textAlign: msg['textAlign'],
-            textDirection: msg['textDirection'],
-            maxLines: msg['maxLines']);
 
-      Map<int, List<int>> records = <int, List<int>>{}; //分页数据
-      int length = 400; //长度
-      int offset = 0; //偏移
-      int index = 0; //页面索引
-      int loopTimes = 0; //循环次数
+    // sendPort必须存在
+    if (null == sendPort) {
+      print('获取main isolate SendPort失败');
+      throw new Exception('获取main isolate SendPort失败');
+    }
 
-      int time = new DateTime.now().millisecondsSinceEpoch;
-      while ((offset + length) < bookDecoder.maxLength) {
-        loop:
-        for (int i = 1; i < 100; i++) {
-          loopTimes++;
-          if (pageCalculator.load(bookDecoder.getSection(
-              offset: offset, length: length * i, raw: true))) {
-            List<int> record = [offset, pageCalculator.length];
-//            print('calculate record: $record');
-            records[index++] = record;
-            offset = record[0] + record[1]; //更新偏移值
-            length = offset ~/ index + 100; // 更新长度
-            int time1 = new DateTime.now().millisecondsSinceEpoch;
-            times += pageCalculator.times;
-            sendPort.send({
-              'state': 'active',
-              'record': record,
-              'process': (offset / bookDecoder.maxLength * 1000).round() / 10,
-              'number': index,
-              'renderTimes': pageCalculator.times,
-              'totalRenderTimes': times,
-              'time': time1 - time,
-              'totalTime': time1,
-              'elength': offset / index * 10 ~/ 1 /10,
-              'length': record[1]
-            });
-            pageCalculator.times = 0;
-            time = new DateTime.now().millisecondsSinceEpoch;
-            break loop;
-          }
+    try {
+      /// BookDecoder的Future
+      Future<BookDecoder> bookDecoderFuture;
+
+      /// 消息接收接口
+      ReceivePort receivePort = new ReceivePort();
+
+      /// 向isolate发送SendPort
+      sendPort.send(receivePort.sendPort);
+
+      /// 监听消息
+      receivePort.listen((msg) {
+        print('接收到：$msg');
+        if ('close' == msg) {
+          receivePort.close();
+          return;
         }
-      }
-      sendPort.send({
-        'state': 'done',
-        'records': records,
-        'renderTimes': times,
-        'loopTimes': loopTimes,
-        'length': bookDecoder.maxLength
+
+        /// 消息必须包含Book实例
+        if (msg is! Map || !msg.containsKey('book') || msg['book'] is! Book) {
+          print(msg is! Map);
+          print(!msg.containsKey('book'));
+          print(msg['book'] is! Book);
+          throw new Exception('消息格式不正确，无Book');
+        }
+
+        /// 获取Future<BookDecoder>
+        bookDecoderFuture =
+            BookDecoder.init(book: msg['book'], parentPort: sendPort);
+
+        /// 获得BookDecoder，计算分页
+        bookDecoderFuture.then((bookDecoder) {
+          try {
+            print('开始计算分页，总长度：${bookDecoder.maxLength}');
+
+            /// bookDecoder不能为空
+            if (null == bookDecoder) return;
+
+            /// 获取分页计算器实例
+            if (null == pageCalculator)
+              pageCalculator = new PageCalculator(
+                  key: 'book',
+                  size: msg['pageSize'],
+                  textStyle: msg['textStyle'],
+                  textAlign: msg['textAlign'],
+                  textDirection: msg['textDirection'],
+                  maxLines: msg['maxLines']);
+
+            /// 整书分页数据
+            Map<int, List<int>> records = <int, List<int>>{}; //分页数据
+
+            int length = 400; //长度
+            int offset = 0; //偏移
+            int index = 0; //页面索引
+            int loopTimes = 0; //循环次数
+            int times = 0; //计算次数
+
+            // 计算其实时间
+            int startTime = new DateTime.now().millisecondsSinceEpoch;
+            int time = startTime;
+
+            // 循环分段读取书籍内容
+            while ((offset + length) < bookDecoder.maxLength) {
+              loop:
+              for (int i = 1; i < 100; i++) {
+                loopTimes++;
+                if (pageCalculator.load(bookDecoder.getSection(
+                    offset: offset, length: length * i, raw: true))) {
+                  List<int> record = [offset, pageCalculator.length];
+                  records[index++] = record; // 添加分页数据
+                  offset = record[0] + record[1]; // 更新偏移值
+                  length = offset ~/ index + 100; // 更新长度
+                  times += pageCalculator.times; // 更新总计算次数
+                  // 当前时间
+                  int currTime = new DateTime.now().millisecondsSinceEpoch;
+                  sendPort.send({
+                    'state': 'active',
+                    'record': record,
+                    'process':
+                        (offset / bookDecoder.maxLength * 10000).round() / 100,
+                    'number': index,
+                    'times': pageCalculator.times,
+                    'totalTimes': times,
+                    'aveTimes': times / index * 10 ~/ 1 / 10,
+                    'time': currTime - time,
+                    'totalTime': currTime - startTime,
+                    'aveTime': (currTime - startTime) / index * 10 ~/ 1 / 10,
+                    'length': record[1],
+                    'eveLength': offset / index * 10 ~/ 1 / 10,
+                  });
+                  time = currTime;
+                  pageCalculator.times = 0;
+                  break loop;
+                }
+              }
+            }
+
+            /// 计算结束
+            sendPort.send({
+              'state': 'done',
+              'records': records,
+              'times': times,
+              'aveTimes': times / records.length * 10 ~/ 1 / 10,
+              'time': (time - startTime) / 100 ~/ 1 / 10,
+              'aveTime': (time - startTime) / records.length * 10 ~/ 1 / 10,
+              'loopTimes': loopTimes,
+              'length': bookDecoder.maxLength
+            });
+          } catch (e) {
+            /// 计算分页过程中出现异常
+            print('计算分页过程中出现异常: $e');
+            throw e;
+          }
+        }).catchError((e) {
+          /// 获取BookDecoder时出现异常
+          print('获取BookDecoder时出现异常');
+          throw e;
+        });
       });
+    } catch (e) {
+      print('calculate方法出现异常: $e');
+      throw e;
     }
   }
 
@@ -851,7 +1060,7 @@ class Record {
     print('close@Records');
     isCalculating = {'default': false};
     if (null != isolate) {
-      isolate.pause(isolate.pauseCapability);
+//      isolate.pause(isolate.pauseCapability);
       print('kill isolate');
       sendPort?.send('close');
       sendPort = null;
@@ -859,13 +1068,31 @@ class Record {
       isolate = null;
       receiveStream = null;
       receivePort?.close();
+      receivePort = null;
+      exitReceivePort.close();
+      exitReceivePort = null;
+      errorReceivePort.close();
+      errorReceivePort = null;
     }
   }
 }
 
 /// 消息发送
 Future sendReceive(SendPort sendPort, dynamic args) {
+  if (null == sendPort) {
+    throw new Exception('sendPort不能为null@sendReceive');
+  }
   ReceivePort response = new ReceivePort();
   sendPort.send([response.sendPort, args]);
   return response.first;
+}
+
+/// 运行平台代码获取书籍内容
+Future<String> getContentFromPlatform(Book book) async {
+  var platform = const MethodChannel('light.yotaku.cn/system');
+  try {
+    return await platform.invokeMethod('readFile', {'path': book.uri});
+  } on PlatformException catch (e) {
+    throw e;
+  }
 }
