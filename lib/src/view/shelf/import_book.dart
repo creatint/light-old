@@ -8,7 +8,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:light/src/service/file_service.dart';
 import 'package:light/src/model/book.dart';
-import 'package:light/src/view/reader2/reader.dart';
+import 'package:light/src/view/reader/reader.dart';
 import 'package:light/src/service/book_service.dart';
 import 'package:light/src/widgets/custom_page_route.dart';
 import 'package:light/src/widgets/custom_indicator.dart';
