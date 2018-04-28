@@ -1,20 +1,33 @@
 import 'dart:io';
-import 'package:flutter/material.dart';
-import 'package:flutter/foundation.dart';
 
+import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
 import 'package:light/src/model/book.dart';
+import 'package:light/src/model/selected_list_model.dart';
 
 class BookItem extends StatelessWidget {
   BookItem(
       {@required this.book,
       @required this.showReadProgress,
-      @required this.onTap});
+      @required this.onTap,
+      @required this.onLongPress,
+      @required this.inSelect,
+      @required this.selectedBooks});
 
   final ValueChanged<Book> onTap;
+  final ValueChanged<Book> onLongPress;
   final Book book;
+  final bool inSelect;
   final bool showReadProgress;
+  final SelectedListModel<Book> selectedBooks;
 
   final RegExp regHttp = new RegExp(r'^http');
+
+  ///检查是否选中
+  bool checkSelected() {
+    if (null != selectedBooks && selectedBooks.indexOf(book) >= 0) return true;
+    return false;
+  }
 
   ///295/405
   List<Widget> buildCover(BuildContext context) {
@@ -37,28 +50,28 @@ class BookItem extends StatelessWidget {
     }
     return <Widget>[
       new Positioned.fill(child: image),
+//      new Positioned(
+//        top: -5.0,
+//        right: -5.0,
+//        child: new Offstage(
+//          offstage: !inSelect,
+//          child: new SizedBox(
+//            height: 21.0,
+//            width: 21.0,
+//            child: new CircleAvatar(
+//              backgroundColor: Colors.white,
+//            ),
+//          ),
+//        ),
+//      ),
       new Positioned(
         top: -5.0,
         right: -5.0,
         child: new Offstage(
           offstage: true,
           child: new SizedBox(
-            height: 22.0,
-            width: 22.0,
-            child: new CircleAvatar(
-              backgroundColor: Colors.white,
-            ),
-          ),
-        ),
-      ),
-      new Positioned(
-        top: -5.0,
-        right: -5.0,
-        child: new Offstage(
-          offstage: true,
-          child: new SizedBox(
-            height: 20.0,
-            width: 20.0,
+            height: 21.0,
+            width: 21.0,
             child: new CircleAvatar(
               backgroundColor: Colors.red,
               child: new Text(
@@ -68,16 +81,58 @@ class BookItem extends StatelessWidget {
             ),
           ),
         ),
-      )
-    ];
+      ),
+//      new Offstage(
+//        offstage: ,
+//      )
+    ]..addAll(<Widget>[
+        new Positioned(
+          top: -5.0,
+          right: -5.0,
+          child: new Offstage(
+            offstage: !inSelect,
+            child: new SizedBox(
+              height: 21.0,
+              width: 21.0,
+              child: new Container(
+                padding: EdgeInsets.zero,
+                margin: const EdgeInsets.only(bottom: 1.0),
+                decoration: new BoxDecoration(
+                    color: Colors.white,
+                    shape: BoxShape.circle,
+                    border: new Border.all(color: Colors.red, width: 1.0)),
+              ),
+            ),
+          ),
+        ),
+        new Positioned(
+          top: -7.0,
+          right: -4.0,
+          child: new Offstage(
+            offstage: !inSelect || !checkSelected(),
+            child: new SizedBox(
+              height: 21.0,
+              width: 21.0,
+              child: new Container(
+                decoration: new BoxDecoration(
+                    color: Colors.white, shape: BoxShape.circle),
+                child: new Icon(
+                  Icons.check_circle,
+                  color: Colors.red,
+                  size: 24.0,
+                ),
+              ),
+            ),
+          ),
+        ),
+      ]);
   }
 
   @override
   Widget build(BuildContext context) {
     return new GestureDetector(
-      onTap: (){
-        onTap(book);
-      },
+      onTap: () => onTap(book),
+      onLongPress: () => onLongPress(book),
       child: new Container(
         child: new Column(
           crossAxisAlignment: CrossAxisAlignment.start,

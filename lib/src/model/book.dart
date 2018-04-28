@@ -1,6 +1,8 @@
 import 'package:flutter/foundation.dart';
 import 'dart:io';
+import 'dart:async';
 import 'package:light/src/service/file_service.dart';
+import 'package:light/src/service/book_service.dart';
 
 ///book数据可能是从线上获取，也可能是本地存储
 ///无论从线上线下获取到的book数据，封面不一定存在
@@ -35,6 +37,7 @@ class Book {
   final String type;
   final String createAt;
   final String updateAt;
+  BookService bookService;
 
   Book.fromMap({@required Map<String, dynamic> map})
       : assert(null != map),
@@ -65,6 +68,13 @@ class Book {
       'uri': uri,
       'create_at': createAt
     };
+  }
+
+  Future<int> delete() async{
+    if (null == bookService) {
+      bookService = new BookService();
+    }
+    return await bookService.deleteBook(this);
   }
 }
 

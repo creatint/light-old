@@ -86,6 +86,10 @@ class DB {
     return _database.rawQuery(query);
   }
 
+  Future<int> rawDelete(String sql, List<dynamic> arguments) {
+    return _database.rawDelete(sql, arguments);
+  }
+
   Future<Null> execute(String query, List arguments) {
     return _database.execute(query, arguments);
   }

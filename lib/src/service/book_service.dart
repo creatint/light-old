@@ -20,7 +20,7 @@ import 'package:light/src/service/db.dart';
 import 'package:light/src/model/book.dart';
 
 //import 'package:light/src/service/mock_book.dart';
-import 'package:light/src/widgets/selected_list_model.dart';
+import 'package:light/src/model/selected_list_model.dart';
 import 'package:light/src/service/file_service.dart';
 import 'package:light/src/model/read_mode.dart';
 import 'package:light/src/utils/page_calculator.dart';
@@ -28,9 +28,15 @@ import 'package:light/src/utils/page_calculator.dart';
 class BookService {
   final String name;
   final DB db;
+  static SharedPreferences prefs;
   static final Map<String, BookService> _cache = <String, BookService>{};
 
   factory BookService([String name = 'default']) {
+    if (null == prefs) {
+      SharedPreferences.getInstance().then((v) {
+        prefs = v;
+      });
+    }
     if (_cache.containsKey(name)) {
       return _cache[name];
     } else {
@@ -72,6 +78,7 @@ class BookService {
         num++;
       }
     }
+
 //    books.forEach((Book book) async {
 //      if (await createBook(book) >= 0) {
 //        num++;
@@ -79,6 +86,27 @@ class BookService {
 //    });
     print('return createBooks');
     return new Future.value(num);
+  }
+
+  /// 删除书籍
+  Future<int> deleteBook(Book book) async {
+    return await db
+        .rawDelete('DELETE FROM book WHERE title = ?', ['another name']);
+  }
+
+  /// 批量删除书籍
+  Future<int> deleteBooks(List<Book> books) async {
+    int count = 0;
+    for (Book book in books) {
+      print('for');
+      count += await db
+              .rawDelete('DELETE FROM book WHERE title = ?', [book.title]) ??
+          0;
+
+      prefs.remove(book.title);
+    }
+    print('count $count');
+    return count;
   }
 
   ///导入本地书籍
@@ -315,7 +343,6 @@ class BookDecoder {
                 content = '无内容';
             }
             randomAccessFile.close();
-            res = {'content': content};
             break;
           case BookType.epub:
 //            print('book type is epub');
@@ -354,20 +381,20 @@ class BookDecoder {
 //                epubBook: epub,
 //                chapters: chapters,
 //                catelogs: catelogs);
-            res = {'content': 'epub'};
+            content = 'epub';
             break;
           case BookType.pdf:
-            break;
           case BookType.url:
-            break;
           case BookType.urls:
+            content = '不支持该文件类型：${book.uri}';
             break;
         }
 
         // 发送结果
+        res = {'content': content};
+        print(res);
         sendPort.send(res);
       } catch (e) {
-//        print('error: $e');
         throw e;
       }
     });
@@ -413,11 +440,9 @@ class BookDecoder {
       /// 用于向isolate发送消息的接口
       SendPort sendPort = await msgStream.first;
 
-
       /// 发送计算指令，并返回结果
       sendPort.send(book);
       await for (var res in msgStream) {
-
         /// 如果是Map，且res['content']存在内容
         /// 则实例化BookDecoder并返回
         if (res is Map && res.containsKey('content')) {
@@ -447,6 +472,7 @@ class BookDecoder {
         // 结束isolate
         sendPort.send('close');
         isolate.kill(priority: Isolate.beforeNextEvent);
+        print('kill');
         isolate = null;
         msgStream = null;
         receivePort.close();
@@ -506,7 +532,7 @@ class BookDecoder {
 
   ///获取字块
   dynamic getSection({int offset, int length, bool raw}) {
-//    print('getSection@bookService offset=$offset length=$length');
+    print('getSection@bookService offset=$offset length=$length');
 //    if (sections.containsKey(offset)) return sections[offset];
     String title;
     String text = '';
@@ -567,10 +593,10 @@ class BookDecoder {
 
         break;
       case BookType.pdf:
-        break;
       case BookType.url:
-        break;
       case BookType.urls:
+        text = content;
+        isLast = true;
         break;
     }
 //        ///删除空行
