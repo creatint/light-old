@@ -28,6 +28,14 @@ class _HomeState extends State<Home> {
   List<_NavigationItem> navigationItems; //导航元素
   int currentIndex = 1; //当前导航索引
   List<Widget> pages = <Widget>[]; //页面列表
+  bool hideBottom = false; // 隐藏底部栏
+
+  /// 隐藏底部导航栏
+  void handleHideBottom(bool hide) {
+    setState(() {
+      hideBottom = hide;
+    });
+  }
 
   Widget _buildNavigations(BuildContext context) {
     if (navigationItems == null || navigationItems.length == 0) {
@@ -38,21 +46,24 @@ class _HomeState extends State<Home> {
             title: '发现',
             name: _NavigationName.explore,
             useLightTheme: widget.useLightTheme,
-            onThemeChanged: widget.onThemeChanged),
+            onThemeChanged: widget.onThemeChanged,
+            hideBottom: handleHideBottom),
         new _NavigationItem(
             icon: Icons.import_contacts,
             prefs: widget.prefs,
             title: '收藏',
             name: _NavigationName.shelf,
             useLightTheme: widget.useLightTheme,
-            onThemeChanged: widget.onThemeChanged),
+            onThemeChanged: widget.onThemeChanged,
+            hideBottom: handleHideBottom),
         new _NavigationItem(
             icon: Icons.explore,
             prefs: widget.prefs,
             title: '我的',
             name: _NavigationName.profile,
             useLightTheme: widget.useLightTheme,
-            onThemeChanged: widget.onThemeChanged),
+            onThemeChanged: widget.onThemeChanged,
+            hideBottom: handleHideBottom),
       ];
     }
     return new BottomNavigationBar(
@@ -87,7 +98,7 @@ class _HomeState extends State<Home> {
     Widget bottomNavigationBar = _buildNavigations(context);
     return new Scaffold(
         body: _buildPage(context, currentIndex),
-        bottomNavigationBar: bottomNavigationBar);
+        bottomNavigationBar: hideBottom ? null : bottomNavigationBar);
   }
 }
 
@@ -100,12 +111,14 @@ class _NavigationItem {
       @required this.name,
       @required this.useLightTheme,
       @required this.prefs,
-      @required this.onThemeChanged})
+      @required this.onThemeChanged,
+      @required this.hideBottom})
       : this.item = new BottomNavigationBarItem(
             icon: new Icon(icon), title: new Text(title));
   final useLightTheme;
   final SharedPreferences prefs;
   final ValueChanged<bool> onThemeChanged;
+  final ValueChanged<bool> hideBottom;
   final String title;
   final _NavigationName name;
   final BottomNavigationBarItem item;
@@ -130,6 +143,7 @@ class _NavigationItem {
           prefs: prefs,
           onThemeChanged: onThemeChanged,
           showReadProgress: true,
+          hideBottom: hideBottom,
         );
         break;
       case _NavigationName.profile:
