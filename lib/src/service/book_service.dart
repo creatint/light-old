@@ -265,7 +265,6 @@ class BookDecoder {
 
     /// 监听消息
     receivePort.listen((msg) {
-      var response;
       var res;
       Book book;
       try {
@@ -280,15 +279,10 @@ class BookDecoder {
         ///
         /// msg[0]必须是发送接口
         print('msg: $msg');
-        if (msg[0] is SendPort) {
-          response = msg[0];
-        } else {
-          sendPort.send(new Exception('消息结构不正确，msg[0]不是SendPort'));
-        }
 
         /// msg[1]必须是Book
-        if (msg[1] is Book) {
-          book = msg[1];
+        if (msg is Book) {
+          book = msg;
         } else {
           sendPort.send(new Exception('消息结构不正确，msg[1]不是Book'));
         }
@@ -308,7 +302,7 @@ class BookDecoder {
 //            print('charset is $codeType');
             switch (codeType) {
               case 'gbk':
-                response.send('gbk');
+                sendPort.send('gbk');
                 return;
               case 'utf8':
                 content =
@@ -371,9 +365,9 @@ class BookDecoder {
         }
 
         // 发送结果
-        response.send(res);
-      }  catch (e) {
-        print('error: $e');
+        sendPort.send(res);
+      } catch (e) {
+//        print('error: $e');
         throw e;
       }
     });
@@ -388,103 +382,83 @@ class BookDecoder {
   static Future<BookDecoder> init(
       {@required Book book, SendPort parentPort, String text}) async {
 //    print('init book decoder');
-
-    // 如果存在此书籍的实例，则直接返回
-    if (_cache.containsKey(book)) {
+    try {
+      // 如果存在此书籍的实例，则直接返回
+      if (_cache.containsKey(book)) {
 //      print('已存在bokDecoder');
-      return _cache[book];
-    }
-
-    // 如果text不为空，则直接返回BookDecoder实例
-    if (null != text && text.isNotEmpty) {
-      _cache[book] = new BookDecoder(book: book, content: text);
-      return _cache[book];
-    }
-
-    // 书籍内容
-    String content;
-
-    // 消息接口
-    ReceivePort receivePort = new ReceivePort();
-
-    /// 消息流
-    Stream msgStream = receivePort.asBroadcastStream();
-
-    // 异常接口
-    ReceivePort errorReceivePort = new ReceivePort();
-
-    // 退出通知接口
-    ReceivePort exitReceivePort = new ReceivePort();
-
-    // 创建isolate
-    Isolate isolate = await Isolate.spawn(_init, receivePort.sendPort,
-        onError: errorReceivePort.sendPort,
-        onExit: exitReceivePort.sendPort,
-        errorsAreFatal: true);
-
-    /// 用于向isolate发送消息的接口
-    SendPort sendPort = await msgStream.first;
-
-    /// 监听错误
-    errorReceivePort.listen((e) {
-      print('错误消息：$e');
-    });
-
-    /// 监听退出通知
-    exitReceivePort.listen((e) {
-      print('isolate退出通知：$e');
-    });
-
-    /// 监听消息
-    msgStream.listen((msg) {
-      print('receive msg: $msg');
-    });
-
-    /// 发送计算指令，并返回结果
-    var res = await sendReceive(sendPort, book);
-//    print('回消息了 $res');
-
-    /// 如果是异常，则抛出
-    if (res is Exception) {
-      throw res;
-    }
-
-    if (res is String) {
-      /// 如果为'gbk'且parentPort不存在
-      /// 则直接调用平台代码解析gbk文本
-      if ('gbk' == res && null == parentPort) {
-        content = await getContentFromPlatform(book);
-//        print('是gbk文件，获取content');
-      } else if ('gbk' == res && null != parentPort) {
-        /// 如果parentPort存在，则发送'gbk'字符串消息
-        content = await sendReceive(parentPort, 'gbk');
-      } else {
-        throw res;
+        return _cache[book];
       }
+
+      // 如果text不为空，则直接返回BookDecoder实例
+      if (null != text && text.isNotEmpty) {
+        _cache[book] = new BookDecoder(book: book, content: text);
+        return _cache[book];
+      }
+
+      // 书籍内容
+      String content;
+
+      // 消息接口
+      ReceivePort receivePort = new ReceivePort();
+
+      /// 消息流
+      Stream msgStream = receivePort.asBroadcastStream();
+
+      // 创建isolate
+      Isolate isolate = await Isolate.spawn(_init, receivePort.sendPort,
+          onError: receivePort.sendPort,
+          onExit: receivePort.sendPort,
+          errorsAreFatal: true);
+
+      /// 用于向isolate发送消息的接口
+      SendPort sendPort = await msgStream.first;
+
+
+      /// 发送计算指令，并返回结果
+      sendPort.send(book);
+      await for (var res in msgStream) {
+
+        /// 如果是Map，且res['content']存在内容
+        /// 则实例化BookDecoder并返回
+        if (res is Map && res.containsKey('content')) {
+          content = res['content'];
+        } else if (res is String) {
+          /// 如果是字符串，判断是否为'gbk'
+          ///
+          /// 如果为'gbk'且parentPort不存在
+          /// 则直接调用平台代码解析gbk文本
+          if ('gbk' == res && null == parentPort) {
+            content = await getContentFromPlatform(book);
+//        print('是gbk文件，获取content');
+          } else if ('gbk' == res && null != parentPort) {
+            /// 如果parentPort存在，则发送'gbk'字符串消息
+            content = await sendReceive(parentPort, 'gbk');
+          } else {
+            throw res;
+          }
+        } else {
+          /// 可能是异常，则抛出
+          throw res;
+        }
+
+        // 实例化BookDecoder
+        _cache[book] = new BookDecoder(book: book, content: content);
+
+        // 结束isolate
+        sendPort.send('close');
+        isolate.kill(priority: Isolate.beforeNextEvent);
+        isolate = null;
+        msgStream = null;
+        receivePort.close();
+        receivePort = null;
+
+        return _cache[book];
+      }
+    } catch (e) {
+//      print('init error: $e');
+      throw e;
     }
-
-    /// 如果是Map，且res['content']存在内容
-    /// 则实例化BookDecoder并返回
-    if (res is Map && res.containsKey('content')) {
-      content = res['content'];
-    }
-
-    // 实例化BookDecoder
-    _cache[book] = new BookDecoder(book: book, content: content);
-
-    // 结束isolate
-    sendPort.send('close');
-    isolate.kill(priority: Isolate.beforeNextEvent);
-    isolate = null;
-    msgStream = null;
-    exitReceivePort.close();
-    exitReceivePort = null;
-    errorReceivePort.close();
-    errorReceivePort = null;
-    receivePort.close();
-    receivePort = null;
-
-    return _cache[book];
+    return null;
   }
 
   ///获取text文件字节总长度

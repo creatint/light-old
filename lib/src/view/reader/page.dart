@@ -319,7 +319,6 @@ class PageState extends State<Page> {
 //            '共计算 $times 次');
         pageCalculator.times = 0;
       } else {
-        print('flag3');
         for (int i = 1; i < 100; i++) {
           Section section = getSection(sectionOffset, sectionSize * i);
           print(section);
@@ -453,9 +452,7 @@ class PageState extends State<Page> {
                     ),
                   );
                 } else {
-                  String err = 'Oops！${snapshot.error}'
-                      '\n错误代码：001E2';
-                  print(err);
+                  String err = 'Oops！错误代码：001E2\n${snapshot.error}';
                   return new Center(child: new Text(err));
                 }
               });
