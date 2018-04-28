@@ -16,24 +16,26 @@ class SelectedListModel<T> {
   final GetterCallback<T, int> _handleIndexOf;
   List<T> _list = <T>[];
 
+  List<T> get list => _list;
+
   void addAll(List<T> list) {
-    list.forEach((T topic) {
-      add(topic);
+    list.forEach((T ele) {
+      add(ele);
     });
   }
 
-  void add(T topic) {
-    remove(topic);
-    _list.add(topic);
+  void add(T ele) {
+    remove(ele);
+    _list.add(ele);
   }
 
-  void remove(T topic) => _handleRemove(topic, _list);
+  void remove(T ele) => _handleRemove(ele, _list);
 
   T operator [](int index) => _list[index];
 
   int get length => _list.length;
 
-  int indexOf(T topic) => _handleIndexOf(topic, _list);
+  int indexOf(T ele) => _handleIndexOf(ele, _list);
 
   void clear() {
     _list.clear();
