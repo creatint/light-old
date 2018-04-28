@@ -4,7 +4,7 @@ import 'dart:io';
 //import 'dart:async';
 
 import 'package:light/src/service/file_service.dart';
-import 'package:light/src/widgets/selected_list_model.dart';
+import 'package:light/src/model/selected_list_model.dart';
 
 typedef void LongPress({FileSystemEntity entity, FileType type});
 

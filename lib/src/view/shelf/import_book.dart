@@ -14,7 +14,7 @@ import 'package:light/src/widgets/custom_page_route.dart';
 import 'package:light/src/widgets/custom_indicator.dart';
 import 'package:light/src/view/shelf/entity_item.dart';
 import 'package:light/src/widgets/select_bottom_bar.dart';
-import 'package:light/src/widgets/selected_list_model.dart';
+import 'package:light/src/model/selected_list_model.dart';
 
 enum DialogAction { requestForPermission }
 
@@ -194,6 +194,7 @@ class ImportBookState extends State<ImportBook> {
     });
   }
 
+  /// 选择所有
   void handleSelectAll() {
     if (selectedEntities.length >= entityList.length) {
       setState(() {
