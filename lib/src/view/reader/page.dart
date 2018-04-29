@@ -11,17 +11,16 @@ import 'package:light/src/utils/custom_text_painter.dart';
 /// 错误代码：
 /// 001E2: 实例化BookDecoder失败
 class Page extends StatefulWidget {
-  Page(
-      {Key key,
-      @required this.prefs,
-      @required this.showMenu,
-      @required this.bookDecoderFuture,
-      @required this.bookService,
-      @required this.readModeList,
-      @required this.currentReadModeId,
-      @required this.textStyle,
-      @required this.textAlign,
-      @required this.textDirection});
+  Page({Key key,
+    @required this.prefs,
+    @required this.showMenu,
+    @required this.bookDecoderFuture,
+    @required this.bookService,
+    @required this.readModeList,
+    @required this.currentReadModeId,
+    @required this.textStyle,
+    @required this.textAlign,
+    @required this.textDirection});
 
   final SharedPreferences prefs;
 
@@ -101,7 +100,8 @@ class PageState extends State<Page> {
   ///内容
   Section section;
 
-  int childCount = 2;
+  /// 分页数量
+  int childCount = 1;
 
   /// 用于计算点击手势区域的比例
   Map<String, List<int>> tapRatio = <String, List<int>>{
@@ -199,7 +199,6 @@ class PageState extends State<Page> {
         handlePageChanged(true);
       } else {
         //打开菜单
-        // TODO: 异步刷新阅读主题
         isShowMenu = true;
         widget.showMenu().then((value) {
           if (true == value) {
@@ -222,11 +221,14 @@ class PageState extends State<Page> {
   bool get hasNextPage => lastOffset < maxLength;
 
   ///标题样式的获取
-  TextStyle get titleStyle => Theme
-      .of(context)
-      .textTheme
-      .title
-      .copyWith(fontSize: 14.0, color: Theme.of(context).disabledColor);
+  TextStyle get titleStyle =>
+      Theme
+          .of(context)
+          .textTheme
+          .title
+          .copyWith(fontSize: 14.0, color: Theme
+          .of(context)
+          .disabledColor);
 
   /// 计算每页显示行数
   int get maxLines {
@@ -245,12 +247,16 @@ class PageState extends State<Page> {
 
   /// 每次切换
   void handlePageScroll() {
-    if (controller.page % 1 == 0.0) {
+    print('handlePageScroll controller.page=${controller.page}');
+    if (controller.page == null || controller.page % 1 == 0.0) {
       int count = childCount;
+      print('flag count=$count');
       if (hasNextPage && (pageNumber + 1) == count) {
         count = childCount + 1;
+        print('flag1 count=$count');
       }
       if (count != childCount)
+        print('flag2 count=$count');
         setState(() {
           childCount = count;
         });
@@ -294,11 +300,11 @@ class PageState extends State<Page> {
       pageNumber = index;
 
       ///存在当前分页数据，直接获取内容
-      if (records.containsKey(index)) {
+      if (null != records[index]) {
         print('分页(1)：${records[index]}');
         pageCalculator
             .layout(getSection(records[index][0], records[index][1]).text);
-      } else if (records.containsKey(index - 1)) {
+      } else if (null != records[index - 1]) {
         ///存在上一页面数据,获取下一页内容
         // 计算下一页偏移值
         print('计算下一页偏移值');
@@ -307,7 +313,11 @@ class PageState extends State<Page> {
         for (int i = 1; i < 100; i++) {
           print('flag');
           Section section = getSection(offset, sectionSize * i);
-          if (pageCalculator.load(section.text)) {
+          print(section);
+          if (null == section) {
+            pageCalculator.load('无内容');
+            break;
+          } else if (pageCalculator.load(section.text)) {
             records[index] = [offset, pageCalculator.length];
             print('分页(2)：${records[index]}');
             break;
@@ -321,19 +331,22 @@ class PageState extends State<Page> {
       } else {
         for (int i = 1; i < 100; i++) {
           Section section = getSection(sectionOffset, sectionSize * i);
-          print(section);
-          if (null != section && section.isLast == true) {
+          if (null == section) {
+            pageCalculator.load('读取文件失败：001E3\nBookDecoder=null');
+            break;
+          }
+          if (section.isLast == true) {
             pageCalculator.load(section.text);
             records[index] = [sectionOffset, pageCalculator.length];
             print('分页(3.1)：${records[index]}');
             break;
           } else if (pageCalculator.load(section.text)) {
             records[index] = [sectionOffset, pageCalculator.length];
+            print([sectionOffset, pageCalculator.length]);
+            print('index=$index');
+            print('records $records');
             print('分页(3.2)：${records[index]}');
             break;
-          } else {
-            print('false');
-            pageCalculator.load('获取文件失败：001E3');
           }
         }
         times += pageCalculator.times;
@@ -341,11 +354,19 @@ class PageState extends State<Page> {
             '平均每页计算 ${times / (index + 1) * 10 ~/ 1 / 10}\n'
             '共计算 $times 次');
         pageCalculator.times = 0;
+        // 更新最后字符的偏移
+        lastOffset = records[index][0] + records[index][1];
+        // 刷新页码数量
+        new Future.microtask((){
+          handlePageScroll();
+        });
       }
     }
 
     // 更新最后字符的偏移
-    lastOffset = records[index][0] + records[index][1];
+    if (null != records[index]) {
+      lastOffset = records[index][0] + records[index][1];
+    }
     return new Text(
       pageCalculator.content,
       style: widget.textStyle,
@@ -371,9 +392,9 @@ class PageState extends State<Page> {
               children: <Widget>[
                 new Container(
                     child: new Text(
-                  title,
-                  style: titleStyle,
-                )),
+                      title,
+                      style: titleStyle,
+                    )),
               ],
             ),
           ),

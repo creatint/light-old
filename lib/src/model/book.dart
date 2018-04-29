@@ -70,11 +70,32 @@ class Book {
     };
   }
 
-  Future<int> delete() async{
+  Future<int> delete() async {
     if (null == bookService) {
       bookService = new BookService();
     }
     return await bookService.deleteBook(this);
+  }
+}
+
+/// 章节数据
+class Chapter {
+  Chapter(
+      {@required this.id,
+      @required this.title,
+      @required this.offset,
+      @required this.length});
+
+  List<Chapter> subChapters = <Chapter>[];
+
+  final int id;
+  final String title;
+  final int offset;
+  final int length;
+
+  @override
+  String toString() {
+    return 'Chapter{id: $id, title: $title, offset: $offset, length: $length}';
   }
 }
 

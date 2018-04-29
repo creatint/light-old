@@ -249,7 +249,6 @@ class BookDecoder {
   BookDecoder({
     @required this.book,
     this.chapters,
-    this.catelogs,
     this.content,
   }) : type = book.bookType;
 
@@ -277,9 +276,16 @@ class BookDecoder {
   int _sectionSize;
   int _maxSectionOffset;
 
-  SplayTreeMap<int, EpubChapter> chapters;
+  /// 章节
+  List<Chapter> chapters;
 
-  List<Catelog> catelogs;
+  static String html2String(String html) {
+    dom.Document document = parse(html);
+    dom.Element body = document.body;
+//    return hm.convert(body.outerHtml);
+//    return body.outerHtml;
+    return body.text;
+  }
 
   /// 运行与isolate的初始化方法，获取全书内容
   static void _init(SendPort sendPort) {
@@ -292,7 +298,7 @@ class BookDecoder {
     sendPort.send(receivePort.sendPort);
 
     /// 监听消息
-    receivePort.listen((msg) {
+    receivePort.listen((msg) async {
       var res;
       Book book;
       try {
@@ -306,7 +312,7 @@ class BookDecoder {
         /// 不合法则抛出异常
         ///
         /// msg[0]必须是发送接口
-        print('msg: $msg');
+//        print('msg: $msg');
 
         /// msg[1]必须是Book
         if (msg is Book) {
@@ -319,13 +325,17 @@ class BookDecoder {
         File file = new File(book.uri);
 
         // 整书内容
-        String content;
+        String content = '';
+
+        // 章节数据
+        List<Chapter> chapters = <Chapter>[];
+
+        // 随机读取
+        RandomAccessFile randomAccessFile = file.openSync(mode: FileMode.READ);
 
         switch (book.bookType) {
           case BookType.txt:
 //            print('book type is text');
-            RandomAccessFile randomAccessFile =
-                file.openSync(mode: FileMode.READ);
             String codeType = charsetDetector(randomAccessFile);
 //            print('charset is $codeType');
             switch (codeType) {
@@ -346,42 +356,47 @@ class BookDecoder {
             break;
           case BookType.epub:
 //            print('book type is epub');
-            SplayTreeMap<int, EpubChapter> chapters =
-                new SplayTreeMap<int, EpubChapter>();
-//            List<int> bytes = file.readAsBytesSync();
             EpubBook epub;
-            List<Catelog> catelogs = <Catelog>[];
             try {
-//            epub = await EpubReader.readBook(bytes);
+              epub = await EpubReader.readBook(file.readAsBytesSync());
             } catch (e) {
               print('error... $e');
             }
             if (null == epub) {
               print('获取epub失败');
             }
-            int i = 0;
+            int i = 0, j = 0;
+            int offset = 0;
             epub.Chapters.forEach((EpubChapter chapter) {
-              chapters[i] = chapter;
-              Catelog catelog = new Catelog(title: chapter.Title, offset: i);
+//              print('chapter title: ${chapter.Title}');
+              String tmp = html2String(chapter.HtmlContent);
+//              print('content: $tmp');
+              content += tmp;
+//              print('content.length = ${content.length}');
+              Chapter tmpChapter = new Chapter(
+                  id: i,
+                  title: chapter.Title,
+                  offset: offset,
+                  length: tmp.length);
+              offset = content.length;
               if (chapter.SubChapters.length > 0) {
                 chapter.SubChapters.forEach((EpubChapter subChapter) {
+//                  print('sub chapter title: ${subChapter.Title}');
                   i++;
-                  chapters[i] = subChapter;
-                  catelog.subCatelogs
-                      .add(new Catelog(title: subChapter.Title, offset: i));
+                  String tmp = html2String(chapter.HtmlContent);
+//                  print('content: $tmp');
+                  content += tmp;
+                  tmpChapter.subChapters.add(new Chapter(
+                      id: i,
+                      title: subChapter.Title,
+                      offset: offset,
+                      length: tmp.length));
+                  offset = content.length;
                 });
               }
-              catelogs.add(catelog);
+              chapters.add(tmpChapter);
               i++;
             });
-//            result = new BookDecoder(
-//                book: book,
-//                type: type,
-//                file: file,
-//                epubBook: epub,
-//                chapters: chapters,
-//                catelogs: catelogs);
-            content = 'epub';
             break;
           case BookType.pdf:
           case BookType.url:
@@ -391,10 +406,12 @@ class BookDecoder {
         }
 
         // 发送结果
-        res = {'content': content};
-        print(res);
+//        print('chapters: $chapters');
+//        print('content.length = ${content.length}');
+        res = {'content': content, 'chapters': chapters};
         sendPort.send(res);
       } catch (e) {
+        print('_init e: $e');
         throw e;
       }
     });
@@ -425,6 +442,9 @@ class BookDecoder {
       // 书籍内容
       String content;
 
+      /// 书籍章节
+      List<Chapter> chapters;
+
       // 消息接口
       ReceivePort receivePort = new ReceivePort();
 
@@ -445,15 +465,22 @@ class BookDecoder {
       await for (var res in msgStream) {
         /// 如果是Map，且res['content']存在内容
         /// 则实例化BookDecoder并返回
-        if (res is Map && res.containsKey('content')) {
-          content = res['content'];
+        if (res is Map) {
+          if (res.containsKey('content')) {
+            content = res['content'];
+          }
+          if (res.containsKey('chapters')) {
+            chapters = res['chapters'];
+          }
         } else if (res is String) {
           /// 如果是字符串，判断是否为'gbk'
           ///
           /// 如果为'gbk'且parentPort不存在
           /// 则直接调用平台代码解析gbk文本
           if ('gbk' == res && null == parentPort) {
-            content = await getContentFromPlatform(book);
+            List res = await decodeFromPlatform(book);
+            content = res[0];
+            chapters = res[1];
 //        print('是gbk文件，获取content');
           } else if ('gbk' == res && null != parentPort) {
             /// 如果parentPort存在，则发送'gbk'字符串消息
@@ -467,7 +494,8 @@ class BookDecoder {
         }
 
         // 实例化BookDecoder
-        _cache[book] = new BookDecoder(book: book, content: content);
+        _cache[book] =
+            new BookDecoder(book: book, content: content, chapters: chapters);
 
         // 结束isolate
         sendPort.send('close');
@@ -492,11 +520,8 @@ class BookDecoder {
   int get maxLength {
     switch (type) {
       case BookType.txt:
-//        _maxLength = randomAccessFile.lengthSync();
-        _maxLength = content?.length ?? 0;
-        break;
       case BookType.epub:
-        _maxLength = chapters.length;
+        _maxLength = content?.length ?? 0;
         break;
       case BookType.pdf:
         break;
@@ -532,36 +557,27 @@ class BookDecoder {
 
   ///获取字块
   dynamic getSection({int offset, int length, bool raw}) {
-    print('getSection@bookService offset=$offset length=$length');
+//    print('getSection@bookService offset=$offset length=$length');
 //    if (sections.containsKey(offset)) return sections[offset];
     String title;
     String text = '';
     bool isLast = false;
+
+    if (!(offset >= 0) || !(length > 0)) {
+      return null;
+    }
+    if (offset >= maxLength) {
+      return null;
+    }
+    if (offset + length >= maxLength) {
+      text = content.substring(offset, maxLength);
+      isLast = true;
+    } else {
+      text = content.substring(offset, offset + length);
+    }
+
     switch (book.bookType) {
       case BookType.txt:
-        if (!(offset >= 0) || !(length > 0)) {
-          return null;
-        }
-        if (offset >= maxLength) {
-//          print('$offset >= $maxLength offset超出最大值');
-          return null;
-        }
-        if (offset + length >= maxLength) {
-//          print('offset + length >= maxLength: '
-//              '$offset + $length >= $maxLength');
-          text = content.substring(offset, maxLength);
-          isLast = true;
-        } else {
-          text = content.substring(offset, offset + length);
-        }
-//        randomAccessFile.setPositionSync(offset * length);
-//        randomAccessFile.setPositionSync(offset);
-//        bytes = randomAccessFile.readSync(length);
-//        text = utf8.decode(bytes);
-//        if (null != cache) {
-//          text = cache + text;
-//          cache = null;
-//        }
 //        ///优化缩进
 //        text = text.replaceAll(new RegExp(r'[ ]{4,}'),'    ');
 //        if (new RegExp(r'[ ]+([^\r\n\t]+)$', multiLine: false).hasMatch(text)) {
@@ -577,19 +593,14 @@ class BookDecoder {
 //            }
 //          });
 //        }
-        break;
       case BookType.epub:
-        if (offset >= chapters.length) {
-          return null;
-        }
-        title = chapters[offset].Title;
-        dom.Document document = parse(chapters[offset].HtmlContent);
-        dom.Element body = document.body;
-        String mdString = hm.convert(body.outerHtml);
-        text = mdString;
-
-        ///删除空行
-        text = text.replaceAll(new RegExp(r'[\r\n\t]+'), '\r\n');
+//        dom.Document document = parse(chapters[offset].HtmlContent);
+//        dom.Element body = document.body;
+//        String mdString = hm.convert(body.outerHtml);
+//        text = mdString;
+//
+//        /删除空行
+//        text = text.replaceAll(new RegExp(r'[\r\n\t]+'), '\r\n');
 
         break;
       case BookType.pdf:
@@ -609,29 +620,11 @@ class BookDecoder {
     }
     Section section =
         new Section(offset: offset, title: title, text: text, isLast: isLast);
-//    sections[offset] = section;
-//    if (sections.length > sectionsMaxLength) {
-//      sections.remove(sections.firstKeyAfter(0));
-//    }
     return section;
   }
-
-//  void close() {
-//    if (randomAccessFile != null) randomAccessFile.close();
-//  }
 }
 
-///目录，subCatelog
-class Catelog {
-  Catelog({@required this.title, @required this.offset});
-
-  final String title;
-  final int offset;
-  List<Catelog> subCatelogs = <Catelog>[];
-
-  int get count => subCatelogs.length;
-}
-
+/// 字块
 class Section {
   Section(
       {this.offset,
@@ -704,8 +697,9 @@ class Record {
   TextDirection textDirection;
   int maxLines;
 
-  Map<int, List<int>> records = <int, List<int>>{};
-  Map<int, List<int>> _tempRecords = <int, List<int>>{};
+//  List<List<int>> records = <List<int>>[];
+  List<dynamic> records = <List<int>>[];
+  List<List<int>> _tempRecords = <List<int>>[];
 
   ///用于计算分页的isolate
   static Isolate isolate;
@@ -732,7 +726,7 @@ class Record {
     @required textDirection,
     @required maxLines,
   }) async {
-    return;
+//    return;
     print('reset@Record');
 
     /// 页面尺寸
@@ -754,7 +748,7 @@ class Record {
     this.maxLines = maxLines;
 
     /// 当前书籍缓存数据
-    Map<String, Map> data;
+    Map<String, dynamic> data;
 
     try {
       // 计算当前分页key
@@ -763,7 +757,8 @@ class Record {
               ' ${textStyle.height}'
               .codeUnits)
           .toString();
-      print('当前分页状态key: $_key');
+      print('当前分页状态key: $key');
+      print('计算得key: $_key');
       if (_key == key) {
         print('key相等，可以直接退出');
         return;
@@ -771,16 +766,24 @@ class Record {
       //key值不相等，尝试获取当前分页key的对应的分页缓存
       print('key值不相等，尝试获取当前分页key的对应的分页缓存');
 
+//      prefs.remove(bookDecoder.book.title);
       try {
-        data = json.decode(prefs.getString(bookDecoder.book.title));
+        String jsonStr = prefs.getString(bookDecoder.book.title);
+        print('jsonStr=$jsonStr');
+        print(json.decode(jsonStr));
+        if (null == jsonStr)
+          throw new Exception(
+              '当前书籍不存在SharedPreference数据：${bookDecoder.book.title}');
+        data = json.decode(jsonStr);
         // 存在缓存
         print('当前书籍缓存数据: $data');
         if (null != data &&
-            data.containsKey('record') &&
-            data['record'].containsKey(_key)) {
+            data.containsKey('records') &&
+            data['records'].containsKey(_key)) {
           //存在分页缓存，替换到当前，并返回
+          print('存在分页缓存，替换到当前，并返回');
           key = _key;
-          records = data['record'][_key];
+          records = data['records'][_key];
           return;
         }
       } catch (e) {
@@ -852,9 +855,10 @@ class Record {
         if (value is List && value[0] is SendPort && value[1] == 'gbk') {
           print('third isolate解码gbk，main isolate');
           SendPort response = value[0];
-          return getContentFromPlatform(bookDecoder.book).then((text) {
-            response.send(text);
+          decodeFromPlatform(bookDecoder.book).then((res) {
+            response.send(res);
           });
+          return;
         }
 
         // 计算的进度消息
@@ -878,6 +882,26 @@ class Record {
               '平均用时 ${value['aveTime']} ms\n'
               '总计算 ${value['times']} 次 '
               '平均计算 ${value['aveTimes']} 次');
+
+          try {
+            data = json.decode(prefs.getString(bookDecoder.book.title));
+          } catch (e) {
+            data = null;
+          }
+          if (null == data) {
+            data = {
+              'records': {_key: records}
+            };
+          } else if (data.containsKey('records')) {
+            data['records'][_key] = records;
+          }
+          try {
+            print(data);
+            print(json.encode(data));
+            prefs.setString(bookDecoder.book.title, jsonEncode(data));
+          } catch (e) {
+            print('prefs E: $e');
+          }
 
           // 更改计算状态
           isCalculating['default'] = false;
@@ -951,6 +975,7 @@ class Record {
         bookDecoderFuture.then((bookDecoder) {
           try {
             print('开始计算分页，总长度：${bookDecoder.maxLength}');
+            print('开始计算分页，总长度：${bookDecoder.content.length}');
 
             /// bookDecoder不能为空
             if (null == bookDecoder) return;
@@ -966,7 +991,7 @@ class Record {
                   maxLines: msg['maxLines']);
 
             /// 整书分页数据
-            Map<int, List<int>> records = <int, List<int>>{}; //分页数据
+            List<List<int>> records = <List<int>>[]; //分页数据
 
             int length = 400; //长度
             int offset = 0; //偏移
@@ -979,14 +1004,18 @@ class Record {
             int time = startTime;
 
             // 循环分段读取书籍内容
-            while ((offset + length) < bookDecoder.maxLength) {
+            while ((offset + 1) < bookDecoder.maxLength) {
+              print('while');
               loop:
               for (int i = 1; i < 100; i++) {
+                print('for');
                 loopTimes++;
                 if (pageCalculator.load(bookDecoder.getSection(
-                    offset: offset, length: length * i, raw: true))) {
+                        offset: offset, length: length * i, raw: true)) ||
+                    (offset + length) >= bookDecoder.maxLength) {
+                  index++;
                   List<int> record = [offset, pageCalculator.length];
-                  records[index++] = record; // 添加分页数据
+                  records.add(record); // 添加分页数据
                   offset = record[0] + record[1]; // 更新偏移值
                   length = offset ~/ index + 100; // 更新长度
                   times += pageCalculator.times; // 更新总计算次数
@@ -1042,26 +1071,33 @@ class Record {
     }
   }
 
-  bool containsKey(int key) {
-    if (records.isNotEmpty) {
-      return records.containsKey(key);
-    }
-    return _tempRecords.containsKey(key);
-  }
+//  bool containsKey(int key) {
+//    if (records.isNotEmpty) return (records.length - 1) >= key;
+//    return false;
+//  }
 
   operator [](int index) {
-    if (records.isNotEmpty) {
+    if (records.isNotEmpty && (records.length - 1) >= index) {
       return records[index];
     }
-    return _tempRecords[index];
+    if (_tempRecords.isNotEmpty && (_tempRecords.length - 1) >= index) {
+      return _tempRecords[index];
+    }
+    return null;
   }
 
   operator []=(int index, List<int> record) {
-    _tempRecords[index] = record;
+    add(record);
+  }
+
+  void add(List<int> record) {
+    _tempRecords.add(record);
+    print(this.toString());
   }
 
   @override
-  String toString() => records.toString();
+  String toString() =>
+      records.isEmpty ? _tempRecords.toString() : records.toString();
 
   void close() {
     print('close@Records');
@@ -1095,10 +1131,13 @@ Future sendReceive(SendPort sendPort, dynamic args) {
 }
 
 /// 运行平台代码获取书籍内容
-Future<String> getContentFromPlatform(Book book) async {
+Future<List<dynamic>> decodeFromPlatform(Book book) async {
   var platform = const MethodChannel('light.yotaku.cn/system');
   try {
-    return await platform.invokeMethod('readFile', {'path': book.uri});
+    String content =
+        await platform.invokeMethod('readFile', {'path': book.uri});
+    List<Chapter> chapters = <Chapter>[];
+    return [content, chapters];
   } on PlatformException catch (e) {
     throw e;
   }
