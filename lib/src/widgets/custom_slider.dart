@@ -415,7 +415,7 @@ class _RenderSlider extends RenderBox {
       ..team = team
       ..onStart = _handleDragStart
       ..onUpdate = _handleDragUpdate
-      ..onEnded = _handleDragEnd
+      ..onEnd = _handleDragEnd
       ..onCancel = _endInteraction;
     _tap = new TapGestureRecognizer()
       ..team = team
