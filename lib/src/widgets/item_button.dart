@@ -7,12 +7,14 @@ class ItemButton extends StatelessWidget {
     this.icon,
     this.title,
     this.iconSize,
+    this.width
   });
 
   final VoidCallback onTap;
   final Icon icon;
   final Widget title;
   final double iconSize;
+  final double width;
 
   @override
   Widget build(BuildContext context) {
@@ -21,7 +23,7 @@ class ItemButton extends StatelessWidget {
       child: new InkResponse(
         onTap: onTap,
         child: new Container(
-          width: (iconSize ?? 24.0) * 3,
+          width: width ?? (iconSize ?? 24.0) * 3,
           child: new Column(
             crossAxisAlignment: CrossAxisAlignment.center,
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
