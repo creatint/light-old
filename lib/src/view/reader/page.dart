@@ -6,21 +6,23 @@ import 'package:light/src/model/read_mode.dart';
 import 'package:light/src/service/book_service.dart';
 import 'package:light/src/utils/page_calculator.dart';
 import 'package:light/src/utils/custom_text_painter.dart';
+import 'package:light/src/service/app_service.dart';
 
 ///
 /// 错误代码：
 /// 001E2: 实例化BookDecoder失败
 class Page extends StatefulWidget {
-  Page({Key key,
-    @required this.prefs,
-    @required this.showMenu,
-    @required this.bookDecoderFuture,
-    @required this.bookService,
-    @required this.readModeList,
-    @required this.currentReadModeId,
-    @required this.textStyle,
-    @required this.textAlign,
-    @required this.textDirection});
+  Page(
+      {Key key,
+      @required this.prefs,
+      @required this.showMenu,
+      @required this.bookDecoderFuture,
+      @required this.bookService,
+      @required this.readModeList,
+      @required this.currentReadModeId,
+      @required this.textStyle,
+      @required this.textAlign,
+      @required this.textDirection});
 
   final SharedPreferences prefs;
 
@@ -46,6 +48,12 @@ class Page extends StatefulWidget {
 }
 
 class PageState extends State<Page> {
+  /// App服务实例
+  AppService appService = new AppService();
+
+  /// 订阅者，用于取消订阅
+  StreamSubscription substription;
+
   ///资源服务实例
   BookDecoder bookDecoder;
 
@@ -72,6 +80,10 @@ class PageState extends State<Page> {
 
   ///当前页码
   int pageNumber;
+
+  /// 浏览页码的最大值
+  /// 用于计算页面数量
+  int maxPageNumber = 0;
 
   ///旧页码
   int oldPageNumber = 0;
@@ -204,8 +216,8 @@ class PageState extends State<Page> {
           if (true == value) {
             // 弹出菜单，调用record.reset
             records.reset(
+                book: bookDecoder.book,
                 pageSize: pageSize,
-                bookDecoder: bookDecoder,
                 textStyle: widget.textStyle,
                 textAlign: widget.textAlign,
                 textDirection: widget.textDirection,
@@ -221,14 +233,11 @@ class PageState extends State<Page> {
   bool get hasNextPage => lastOffset < maxLength;
 
   ///标题样式的获取
-  TextStyle get titleStyle =>
-      Theme
-          .of(context)
-          .textTheme
-          .title
-          .copyWith(fontSize: 14.0, color: Theme
-          .of(context)
-          .disabledColor);
+  TextStyle get titleStyle => Theme
+      .of(context)
+      .textTheme
+      .title
+      .copyWith(fontSize: 14.0, color: Theme.of(context).disabledColor);
 
   /// 计算每页显示行数
   int get maxLines {
@@ -246,37 +255,48 @@ class PageState extends State<Page> {
   }
 
   /// 每次切换
+  /// 会造成页面刷新
   void handlePageScroll() {
-    print('handlePageScroll controller.page=${controller.page}');
+//    print('handlePageScroll controller.page=${controller.page}\n'
+//        'childCount=$childCount maxPageNumber=$maxPageNumber');
     if (controller.page == null || controller.page % 1 == 0.0) {
+      /// 刷新将要浏览的最大页码
+      if (maxPageNumber < (controller.page).round()) {
+        maxPageNumber = (controller.page).round();
+      }
       int count = childCount;
-      print('flag count=$count');
-      if (hasNextPage && (pageNumber + 1) == count) {
-        count = childCount + 1;
-        print('flag1 count=$count');
+//      print('flag count=$count');
+      if (hasNextPage) {
+        count = maxPageNumber + 2;
+//        print('flag1 count=$count');
       }
       if (count != childCount)
-        print('flag2 count=$count');
         setState(() {
           childCount = count;
         });
     }
+//    print('childCount = $childCount');
   }
 
-  ///[value]==true，下一页，[value]==false，上一页
+  /// 页码切换
+  /// next=true: 下一页
+  /// next=false: 上一页
   void handlePageChanged(bool next) {
     if (next) {
       // 下一页
+//      print('下一页');
       if (!hasNextPage) {
         print('最后一页了');
         return;
       }
+
       controller.nextPage(
-          duration: const Duration(milliseconds: 400), curve: Curves.easeInOut);
+          duration: const Duration(milliseconds: 1), curve: Curves.easeInOut);
     } else {
       // 上一页
+//      print('上一页');
       controller.previousPage(
-          duration: const Duration(milliseconds: 400), curve: Curves.easeInOut);
+          duration: const Duration(milliseconds: 1), curve: Curves.easeInOut);
     }
   }
 
@@ -294,8 +314,8 @@ class PageState extends State<Page> {
 
   // 构建内容页面
   Widget buildContent(int index) {
-//    print('buildContent@Page index=$index');
-    // 页码非当前页，则计算页码，否则直接显示当前页面
+    print('buildContent@Page index=$index');
+    // 页码非当前页，则计算页码，否则直接显示当前页
     if (index != pageNumber || null == pageNumber) {
       pageNumber = index;
 
@@ -306,7 +326,7 @@ class PageState extends State<Page> {
             .layout(getSection(records[index][0], records[index][1]).text);
       } else if (null != records[index - 1]) {
         ///存在上一页面数据,获取下一页内容
-        // 计算下一页偏移值
+        /// 计算下一页偏移值
         print('计算下一页偏移值');
         int offset = records[index - 1][0] + records[index - 1][1];
         // 最大循环100次，正常情况下10次左右
@@ -349,15 +369,22 @@ class PageState extends State<Page> {
             break;
           }
         }
+
+        /// 统计计算次数
         times += pageCalculator.times;
-        print('计算 ${pageCalculator.times} 次\n'
-            '平均每页计算 ${times / (index + 1) * 10 ~/ 1 / 10}\n'
-            '共计算 $times 次');
+//        print('计算 ${pageCalculator.times} 次\n'
+//            '平均每页计算 ${times / (index + 1) * 10 ~/ 1 / 10}\n'
+//            '共计算 $times 次');
+
+        /// 重置计算次数为0
         pageCalculator.times = 0;
-        // 更新最后字符的偏移
+
+        /// 更新最后字符的偏移
         lastOffset = records[index][0] + records[index][1];
-        // 刷新页码数量
-        new Future.microtask((){
+
+        /// 刷新分页数量
+        /// 会造成页面刷新一次
+        new Future.microtask(() {
           handlePageScroll();
         });
       }
@@ -367,6 +394,10 @@ class PageState extends State<Page> {
     if (null != records[index]) {
       lastOffset = records[index][0] + records[index][1];
     }
+
+    /// 用Text显示内容
+    /// 内容可能会超过可视区域
+    /// 用maxLines限制内容行数
     return new Text(
       pageCalculator.content,
       style: widget.textStyle,
@@ -377,7 +408,11 @@ class PageState extends State<Page> {
   }
 
   Widget pageBuilder(BuildContext context, int index) {
-//    print('pageBuilder@Page index=$index pageNumber=$pageNumber');
+    print('pageBuilder@Page index=$index pageNumber=$pageNumber');
+
+    // 更新当前所在分页
+    Record.currentIndex = index;
+
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 20.0),
       decoration: new BoxDecoration(
@@ -392,9 +427,9 @@ class PageState extends State<Page> {
               children: <Widget>[
                 new Container(
                     child: new Text(
-                      title,
-                      style: titleStyle,
-                    )),
+                  title,
+                  style: titleStyle,
+                )),
               ],
             ),
           ),
@@ -429,6 +464,14 @@ class PageState extends State<Page> {
         textAlign: widget.textAlign,
         textDirection: widget.textDirection);
     painter = new CustomTextPainter(textPainter: pageCalculator.textPainter);
+
+    /// 监听页面跳转事件
+    substription = appService.stream.listen((value) {
+      print('stream $value');
+      if ('record/jump' == value[0] && value[1] >= 0) {
+        controller.jumpToPage(value[1]);
+      }
+    });
   }
 
   @override
@@ -452,8 +495,8 @@ class PageState extends State<Page> {
                   // 显示菜单时不刷新整书分页
                   if (!isShowMenu)
                     records.reset(
+                        book: bookDecoder.book,
                         pageSize: pageSize,
-                        bookDecoder: bookDecoder,
                         textStyle: widget.textStyle,
                         textAlign: widget.textAlign,
                         textDirection: widget.textDirection,
@@ -484,7 +527,8 @@ class PageState extends State<Page> {
 
   @override
   void dispose() {
-    records.close();
+    records?.close();
     super.dispose();
+    substription?.cancel();
   }
 }
