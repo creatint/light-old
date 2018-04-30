@@ -19,8 +19,8 @@ dependencies:
   crypto: "^2.0.2+1"
   epub:
     path: d:/tmp/epub/
-  html2md:
-    path: d:/tmp/html2md/
+  html2md: ^0.1.7
+#    path: d:/tmp/html2md/
   mimic:
     path: d:/tmp/mimic/
 

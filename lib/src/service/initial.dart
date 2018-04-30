@@ -44,10 +44,10 @@ Future<SharedPreferences> initial() async {
     if (null == db) {
       throw new Exception('复制db失败');
     }
-    bool dirRes = await createDirectory(config);
-    if (!dirRes) {
-      throw new Exception('创建文件夹失败');
-    }
+//    bool dirRes = await createDirectory(config);
+//    if (!dirRes) {
+//      throw new Exception('创建文件夹失败');
+//    }
     bool testRes = await test(dir: directory, db: db, config: config);
     if (!testRes) {
       throw new Exception('测试失败');
@@ -202,6 +202,7 @@ Future<DB> createDB(Directory dir, Config config) async {
   }
 }
 
+/// 创建存储文件夹
 Future<bool> createDirectory(Config config) async {
   Directory exDir = await getExternalStorageDirectory();
   try {

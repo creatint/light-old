@@ -275,9 +275,7 @@ class _SliderState extends State<CustomSlider> with TickerProviderStateMixin {
   void _handleEnd(double value) {
     assert(widget.onEnded != null);
     final double lerpValue = _lerp(value);
-    if (lerpValue != widget.value) {
-      widget.onEnded(lerpValue);
-    }
+    widget.onEnded(lerpValue);
   }
   // Returns a number between min and max, proportional to value, which must
   // be between 0.0 and 1.0.
@@ -679,9 +677,11 @@ class _RenderSlider extends RenderBox {
   void _endInteraction() {
     if (_active && _state.mounted) {
       _active = false;
-      _currentDragValue = 0.0;
+//      _currentDragValue = 0.0;
+//      print(onEnded);
+//      onEnded(0.0);
       onEnded(_discretize(_currentDragValue));
-      print('flag');
+      print('flag00');
       _state.overlayController.reverse();
       if (showValueIndicator && _state.interactionTimer == null) {
         _state.valueIndicatorController.reverse();

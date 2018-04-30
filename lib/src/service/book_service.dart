@@ -5,7 +5,6 @@ import 'dart:io';
 import 'dart:async';
 import 'dart:convert';
 import 'dart:isolate';
-import 'dart:collection';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -103,7 +102,7 @@ class BookService {
               .rawDelete('DELETE FROM book WHERE title = ?', [book.title]) ??
           0;
 
-      prefs.remove(book.title);
+      prefs.remove(book.recordsName);
     }
     print('count $count');
     return count;
@@ -365,7 +364,7 @@ class BookDecoder {
             if (null == epub) {
               print('获取epub失败');
             }
-            int i = 0, j = 0;
+            int i = 0;
             int offset = 0;
             epub.Chapters.forEach((EpubChapter chapter) {
 //              print('chapter title: ${chapter.Title}');
@@ -673,23 +672,40 @@ bool isBook(dynamic data) {
 ///阅读记录
 ///页面Size、fontSize、lineHeight
 class Record {
-  Record({
-    @required this.prefs,
-    this.bookDecoder,
-    this.pageSize,
-    this.textStyle,
-    this.textAlign,
-    this.textDirection,
-    this.maxLines,
-  });
+  Record._internal({SharedPreferences prefs, Book book}) {
+    book = book;
+
+    Record.prefs = prefs;
+
+    // 消息接收接口
+    receivePort = new ReceivePort();
+
+    // 消息流
+    receiveStream = receivePort.asBroadcastStream();
+
+    // 发送端口
+    senderPort = receivePort.sendPort;
+  }
+
+  static Record _cache;
+
+  factory Record({SharedPreferences prefs, Book book}) {
+    if (null != _cache) return _cache;
+    _cache = new Record._internal(prefs: prefs, book: book);
+    return _cache;
+  }
 
   String key;
-  BookDecoder bookDecoder;
   Size pageSize;
-  SharedPreferences prefs;
+  static SharedPreferences prefs;
 
   /// 分页计算器
   static PageCalculator pageCalculator;
+
+  /// 书籍资源
+  BookDecoder bookDecoder;
+
+  Book book;
 
   ///内容显示格式
   TextStyle textStyle;
@@ -697,9 +713,17 @@ class Record {
   TextDirection textDirection;
   int maxLines;
 
-//  List<List<int>> records = <List<int>>[];
-  List<dynamic> records = <List<int>>[];
+  /// 整书分页数据，实例销毁时置为null
+  static List<dynamic> records;
+
+  /// 临时分页数据
   List<List<int>> _tempRecords = <List<int>>[];
+
+  /// 书籍字数
+  int maxLength;
+
+  /// 当前阅读进度百分比
+  double _currentProcess;
 
   ///用于计算分页的isolate
   static Isolate isolate;
@@ -707,33 +731,60 @@ class Record {
   ///用于接收消息的接口
   static ReceivePort receivePort;
   static Stream receiveStream;
-  static ReceivePort errorReceivePort;
-  static ReceivePort exitReceivePort;
+
+//  static ReceivePort errorReceivePort;
+//  static ReceivePort exitReceivePort;
 
   ///用于发送消息的接口
   static SendPort sendPort;
+
+  /// 通信接口
+  static SendPort senderPort;
 
   /// 当前是否有计算isolate
   /// 当前key是否处于计算中
   static Map<String, bool> isCalculating = <String, bool>{'default': false};
 
+  /// 获取当前阅读进度百分比
+  double get currentProcess {
+    double process;
+    if (null == _currentProcess) {
+      process = prefs.getDouble(book.processName);
+    }
+    if (null != process) {
+      _currentProcess = process;
+    }
+    return _currentProcess ?? 0.0;
+  }
+
+  /// 更新当前页码
+  /// 在prefs中保存进度百分比
+  set currentIndex(int index) {
+    if (null != records) {
+      _currentProcess = index / (records.length - 1);
+      prefs.setDouble(book.processName, _currentProcess);
+    }
+  }
+
   ///重置key
-  reset({
-    @required Size pageSize,
-    @required BookDecoder bookDecoder,
-    @required textStyle,
-    @required textAlign,
-    @required textDirection,
-    @required maxLines,
-  }) async {
+  reset(
+      {@required Size pageSize,
+      @required Book book,
+      @required textStyle,
+      @required textAlign,
+      @required textDirection,
+      @required maxLines,
+      ValueChanged<int> callback}) async {
 //    return;
     print('reset@Record');
+    this.book = book;
+
+    if (null == records) {
+      records = <dynamic>[];
+    }
 
     /// 页面尺寸
     this.pageSize = pageSize;
-
-    /// BookDecoder实例
-    this.bookDecoder = bookDecoder;
 
     /// 文字样式
     this.textStyle = textStyle;
@@ -753,7 +804,7 @@ class Record {
     try {
       // 计算当前分页key
       String _key = sha1
-          .convert('$pageSize ${bookDecoder.book.title} ${textStyle.fontSize}'
+          .convert('$pageSize ${book.title} ${textStyle.fontSize}'
               ' ${textStyle.height}'
               .codeUnits)
           .toString();
@@ -766,24 +817,26 @@ class Record {
       //key值不相等，尝试获取当前分页key的对应的分页缓存
       print('key值不相等，尝试获取当前分页key的对应的分页缓存');
 
-//      prefs.remove(bookDecoder.book.title);
+      // 删除缓存，用于调试
+      prefs.remove(book.title);
+
       try {
-        String jsonStr = prefs.getString(bookDecoder.book.title);
+        String jsonStr = prefs.getString(book.recordsName);
         print('jsonStr=$jsonStr');
         print(json.decode(jsonStr));
         if (null == jsonStr)
-          throw new Exception(
-              '当前书籍不存在SharedPreference数据：${bookDecoder.book.title}');
+          throw new Exception('当前书籍不存在SharedPreference数据：${book.title}');
         data = json.decode(jsonStr);
         // 存在缓存
         print('当前书籍缓存数据: $data');
-        if (null != data &&
-            data.containsKey('records') &&
-            data['records'].containsKey(_key)) {
+        if (null != data && data.containsKey(_key)) {
           //存在分页缓存，替换到当前，并返回
           print('存在分页缓存，替换到当前，并返回');
           key = _key;
-          records = data['records'][_key];
+          records = data[_key];
+          if (null != callback) {
+            callback(records.length);
+          }
           return;
         }
       } catch (e) {
@@ -810,32 +863,10 @@ class Record {
       isCalculating['default'] = true;
       isCalculating[_key] = true;
 
-      // 消息接收接口
-      receivePort = new ReceivePort();
-
-      // 消息流
-      receiveStream = receivePort.asBroadcastStream();
-
-      // 异常接口
-      errorReceivePort = new ReceivePort();
-
-      // 退出通知接口
-      exitReceivePort = new ReceivePort();
-
-      /// 监听错误
-      errorReceivePort.listen((e) {
-        print('错误消息：$e');
-      });
-
-      /// 监听退出通知
-      exitReceivePort.listen((e) {
-        print('isolate退出通知：$e');
-      });
-
       // 创建second isolate
       isolate = await Isolate.spawn(calculate, receivePort.sendPort,
-          onExit: exitReceivePort.sendPort,
-          onError: errorReceivePort.sendPort,
+          onExit: receivePort.sendPort,
+          onError: receivePort.sendPort,
           errorsAreFatal: true);
 
       // 向second isolate发送消息的SendPort
@@ -855,7 +886,7 @@ class Record {
         if (value is List && value[0] is SendPort && value[1] == 'gbk') {
           print('third isolate解码gbk，main isolate');
           SendPort response = value[0];
-          decodeFromPlatform(bookDecoder.book).then((res) {
+          decodeFromPlatform(book).then((res) {
             response.send(res);
           });
           return;
@@ -882,23 +913,24 @@ class Record {
               '平均用时 ${value['aveTime']} ms\n'
               '总计算 ${value['times']} 次 '
               '平均计算 ${value['aveTimes']} 次');
+          if (null != callback) {
+            callback(value['records'].length);
+          }
 
           try {
-            data = json.decode(prefs.getString(bookDecoder.book.title));
+            data = json.decode(prefs.getString(book.recordsName));
           } catch (e) {
             data = null;
           }
           if (null == data) {
-            data = {
-              'records': {_key: records}
-            };
-          } else if (data.containsKey('records')) {
-            data['records'][_key] = records;
+            data = {_key: records};
+          } else {
+            data[_key] = records;
           }
           try {
             print(data);
             print(json.encode(data));
-            prefs.setString(bookDecoder.book.title, jsonEncode(data));
+            prefs.setString(book.recordsName, jsonEncode(data));
           } catch (e) {
             print('prefs E: $e');
           }
@@ -910,13 +942,13 @@ class Record {
           // 关闭isolate
           close();
         } else {
-          print('value=$value');
+          print('未知消息 msg=$value');
         }
       });
 
       // 发送数据，开始分页计算
       sendPort.send({
-        'book': bookDecoder.book,
+        'book': book,
         'textStyle': textStyle,
         'textAlign': textAlign,
         'textDirection': textDirection,
@@ -1076,7 +1108,10 @@ class Record {
 //    return false;
 //  }
 
+  int get length => records.length;
+
   operator [](int index) {
+    if (null == records) records = <dynamic>[];
     if (records.isNotEmpty && (records.length - 1) >= index) {
       return records[index];
     }
@@ -1095,6 +1130,20 @@ class Record {
     print(this.toString());
   }
 
+  double get process {
+//    print('currentIndex:$currentIndex  process: ${currentIndex /
+//        records.length * 100}');
+//    return currentIndex / records.length * 100;
+    return _currentProcess ?? 0.0;
+  }
+
+  /// 根据进度获得页码
+  /// value 0.0 - 100.0
+  int pageIndexFromProcess(double process) {
+    print('count=${records.length}, lastPage=${records.last}');
+    return ((records.length - 1) * process / 100).round();
+  }
+
   @override
   String toString() =>
       records.isEmpty ? _tempRecords.toString() : records.toString();
@@ -1102,21 +1151,16 @@ class Record {
   void close() {
     print('close@Records');
     isCalculating = {'default': false};
-    if (null != isolate) {
-//      isolate.pause(isolate.pauseCapability);
-      print('kill isolate');
-      sendPort?.send('close');
-      sendPort = null;
-      isolate.kill(priority: Isolate.immediate);
-      isolate = null;
-      receiveStream = null;
-      receivePort?.close();
-      receivePort = null;
-      exitReceivePort.close();
-      exitReceivePort = null;
-      errorReceivePort.close();
-      errorReceivePort = null;
-    }
+    records = null;
+    _cache = null;
+    isolate?.kill(priority: Isolate.immediate);
+    isolate = null;
+    receiveStream = null;
+    receivePort?.close();
+    receivePort = null;
+    sendPort?.send('close');
+    sendPort = null;
+    senderPort = null;
   }
 }
 

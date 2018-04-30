@@ -70,6 +70,12 @@ class Book {
     };
   }
 
+  /// 用于记录分页数据
+  String get recordsName => title + '_records';
+
+  /// 用于纪录阅读进度
+  String get processName => title + '_process';
+
   Future<int> delete() async {
     if (null == bookService) {
       bookService = new BookService();

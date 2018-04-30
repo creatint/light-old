@@ -36,6 +36,9 @@ class ReaderState extends State<Reader> {
   ///当前阅读主题ID
   int currentReadModeId = 20;
 
+  /// 消息流
+  Stream msgStream;
+
   ///内容显示格式
   TextAlign textAlign = TextAlign.justify;
   TextDirection textDirection = TextDirection.ltr;
@@ -65,6 +68,8 @@ class ReaderState extends State<Reader> {
                 pageBuilder: (BuildContext context, _, __) {
                   return new Menu(
                     key: new Key(currentReadModeId.toString()),
+                    book: widget.book,
+                    msgStream: msgStream,
                     readModeList: readModeList,
                     currentReadModeId: currentReadModeId,
                     handleSettings: handleSettings,
@@ -106,7 +111,7 @@ class ReaderState extends State<Reader> {
 
   @override
   Widget build(BuildContext context) {
-    print('build@Reader');
+//    print('build@Reader');
     return new Container(
       child: new Stack(
         children: <Widget>[
@@ -131,7 +136,7 @@ class ReaderState extends State<Reader> {
   @override
   void initState() {
     super.initState();
-    print('initState@Reader');
+//    print('initState@Reader');
     SystemChrome.setEnabledSystemUIOverlays([]);
     readModeList = bookService.getReadModes();
     bookDecoderFuture = BookDecoder.init(book: widget.book);

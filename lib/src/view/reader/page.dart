@@ -51,8 +51,11 @@ class PageState extends State<Page> {
   /// App服务实例
   AppService appService = new AppService();
 
-  /// 订阅者，用于取消订阅
-  StreamSubscription substription;
+  /// 监听页面跳转订阅者
+  StreamSubscription subscriptionJump;
+
+  /// 监听分页计算完毕订阅者
+  StreamSubscription subscriptionDone;
 
   ///资源服务实例
   BookDecoder bookDecoder;
@@ -129,6 +132,9 @@ class PageState extends State<Page> {
 
   /// 阅读记录
   Record records;
+
+  /// 分页计算状态
+  bool isCalculating = true;
 
   /// 是否正在显示菜单
   bool isShowMenu = false;
@@ -221,7 +227,8 @@ class PageState extends State<Page> {
                 textStyle: widget.textStyle,
                 textAlign: widget.textAlign,
                 textDirection: widget.textDirection,
-                maxLines: maxLines);
+                maxLines: maxLines,
+                callback: handleCountChange);
             isShowMenu = false;
           }
         });
@@ -254,11 +261,23 @@ class PageState extends State<Page> {
     return section?.title ?? bookDecoder?.book?.title ?? '';
   }
 
+  /// 分页计算完毕，设置页面数量
+  void handleCountChange(int count) {
+    print('handleCountChange count=$count');
+    setState(() {
+      childCount = count;
+      isCalculating = false;
+    });
+  }
+
   /// 每次切换
   /// 会造成页面刷新
   void handlePageScroll() {
 //    print('handlePageScroll controller.page=${controller.page}\n'
 //        'childCount=$childCount maxPageNumber=$maxPageNumber');
+    if (!isCalculating) {
+      return;
+    }
     if (controller.page == null || controller.page % 1 == 0.0) {
       /// 刷新将要浏览的最大页码
       if (maxPageNumber < (controller.page).round()) {
@@ -270,7 +289,7 @@ class PageState extends State<Page> {
         count = maxPageNumber + 2;
 //        print('flag1 count=$count');
       }
-      if (count != childCount)
+      if (count > childCount)
         setState(() {
           childCount = count;
         });
@@ -315,6 +334,10 @@ class PageState extends State<Page> {
   // 构建内容页面
   Widget buildContent(int index) {
     print('buildContent@Page index=$index');
+
+    // 更新当前阅读偏移
+    records.currentIndex = index;
+
     // 页码非当前页，则计算页码，否则直接显示当前页
     if (index != pageNumber || null == pageNumber) {
       pageNumber = index;
@@ -408,10 +431,8 @@ class PageState extends State<Page> {
   }
 
   Widget pageBuilder(BuildContext context, int index) {
-    print('pageBuilder@Page index=$index pageNumber=$pageNumber');
-
-    // 更新当前所在分页
-    Record.currentIndex = index;
+    print('pageBuilder@Page index=$index oldPageNumber=$pageNumber');
+    print('childCount=$childCount');
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 20.0),
@@ -455,23 +476,64 @@ class PageState extends State<Page> {
   @override
   void initState() {
     super.initState();
+
+    /// 阅读记录实例
     records = new Record(prefs: widget.prefs);
+
+    /// 翻页控制器
     controller = new PageController();
+
+    /// 监听页面滚动事件
     controller.addListener(handlePageScroll);
+
+    /// 分页计算器
     pageCalculator = new PageCalculator(
         key: 'page',
         textStyle: widget.textStyle,
         textAlign: widget.textAlign,
         textDirection: widget.textDirection);
-    painter = new CustomTextPainter(textPainter: pageCalculator.textPainter);
+
+    /// 页面绘制器
+//    painter = new CustomTextPainter(textPainter: pageCalculator.textPainter);
 
     /// 监听页面跳转事件
-    substription = appService.stream.listen((value) {
+    subscriptionJump = appService.stream.listen((value) {
       print('stream $value');
       if ('record/jump' == value[0] && value[1] >= 0) {
         controller.jumpToPage(value[1]);
       }
     });
+
+    /// 如果存在则直接更新
+    if (null != Record.records) {
+      childCount = Record.records.length;
+      print('更新childCount=$childCount');
+    }
+
+    /// 监听分页计算完毕事件
+    subscriptionDone = Record.receiveStream.listen((value) {
+      if (value is Map && 'done' == value['state']) {
+        setState(() {
+          childCount = value['records'].length;
+          print('刷新childCount=$childCount');
+        });
+      }
+    });
+  }
+
+  /// 初始化书记资源、分页数据等
+  void initial() {
+    // 显示菜单时不刷新整书分页
+    if (!isShowMenu)
+      records.reset(
+          book: bookDecoder.book,
+          pageSize: pageSize,
+          textStyle: widget.textStyle,
+          textAlign: widget.textAlign,
+          textDirection: widget.textDirection,
+          maxLines: maxLines,
+          callback: handleCountChange);
+//    controller.jumpToPage(records.c)
   }
 
   @override
@@ -492,15 +554,8 @@ class PageState extends State<Page> {
                     !snapshot.hasError &&
                     snapshot.hasData) {
                   bookDecoder = snapshot.data;
-                  // 显示菜单时不刷新整书分页
-                  if (!isShowMenu)
-                    records.reset(
-                        book: bookDecoder.book,
-                        pageSize: pageSize,
-                        textStyle: widget.textStyle,
-                        textAlign: widget.textAlign,
-                        textDirection: widget.textDirection,
-                        maxLines: maxLines);
+                  /// 初始化
+                  initial();
                   return GestureDetector(
                     onTapUp: handleTapUp,
                     onTapDown: handleTapDown,
@@ -529,6 +584,7 @@ class PageState extends State<Page> {
   void dispose() {
     records?.close();
     super.dispose();
-    substription?.cancel();
+    subscriptionJump?.cancel();
+    subscriptionDone?.cancel();
   }
 }
