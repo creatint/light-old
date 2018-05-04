@@ -18,11 +18,11 @@ dependencies:
   options_file: any
   crypto: "^2.0.2+1"
   epub:
-    path: d:/tmp/epub/
+    git: https://github.com/creatint/dart-epub-cn
   html2md: ^0.1.7
 #    path: d:/tmp/html2md/
-  mimic:
-    path: d:/tmp/mimic/
+#  mimic:
+#    path: d:/tmp/mimic/
 
 dev_dependencies:
   flutter_test:
