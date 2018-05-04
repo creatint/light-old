@@ -2,40 +2,47 @@
 
 ![Light logo](https://user-images.githubusercontent.com/17924777/39092072-762deace-4636-11e8-8acd-447a03c7556e.png)
 
-本项目是不再更新，不用慌，升级版在这 [https://github.com/creatint/light](https://github.com/creatint/light)
+Light is a light novel e-reader build with [Flutter](https://flutter.io).
+
+As an app written in the study of Flutter, it has many defects.
+Confirmed habits are hard to get rid of, so this repository  has been no longer maintained.
+
+If you are interested in my new [Light](https://github.com/creatint/light), please click this [https://github.com/creatint/light](https://github.com/creatint/light), welcome your advice.
+
+[中文版](README-zh.md)
 
 ## Features
-- [x] 支持ePub2、ePub3文件 ePub 2 and ePub 3 support. 
-- [x] 支持utf-8编码  Utf-8 support. 
-- [x] 支持latin-1编码 Latin-1 support. 
-- [x] 支持扫描、导入本地文件 Scan and Import Local Files. 
-- [x] 自定义字高 Custom Text Size. 
-- [x] 自定义行高 Custom Line Height. 
-- [x] 多主题 Multi Themes. 
-- [ ] 日、夜间模式切换 Day mode / Night mode. 
-- [ ] 搜索、关注、阅读贴吧 Search / Mark / Reading Tieba. 
-- [ ] 剩余页数Reading Pages left. 
-- [ ] 垂直、水平滚动Vertical or/and Horizontal scrolling. 
-- [ ] 解析ePub文件封面 Parse epub cover image. 
-- [ ] 添加、删除、搜索标签 Add / Delete / Search Mark. 
-- [ ] 处理内、外链 Handle Internal and External Links. 
-- [ ] 贴吧优化阅读 Tieba Optimize reading.
-- [ ] 贴吧离线阅读 Tieba Offline Reading. 
-- [ ] 在线搜索 Book Search Online. 
-- [ ] Wifi导书 Import Book from Wifi. 
-- [ ] 好友、聊天 Friend / Chat. 
-- [ ] 书籍分享 Book Share. 
-- [ ] 文字语音朗读 TTS - Text to Speech Support. 
-- [ ] 用户设置 User Profile. 
+- [x] ePub 2 and ePub 3 support. 
+- [x] Utf-8 support. 
+- [x] Latin-1 support. 
+- [x] Scan and Import Local Files. 
+- [x] Custom Text Size. 
+- [x] Custom Line Height. 
+- [x] Multi Themes. 
+- [ ] Day mode / Night mode. 
+- [ ] Search / Mark / Reading Tieba. 
+- [ ] Reading Pages left. 
+- [ ] Vertical or/and Horizontal scrolling. 
+- [ ] Parse epub cover image. 
+- [ ] Add / Delete / Search Mark. 
+- [ ] Handle Internal and External Links. 
+- [ ] Tieba Optimize reading.
+- [ ] Tieba Offline Reading. 
+- [ ] Book Search Online. 
+- [ ] Import Book from Wifi. 
+- [ ] Friend / Chat. 
+- [ ] Book Share. 
+- [ ] TTS - Text to Speech Support. 
+- [ ] User Profile. 
 
 ## Screeshot
-分页显示 | 本地导入
+Paging | Import 
 :-------------------------:|:-------------------------:
-![分页显示](https://user-images.githubusercontent.com/17924777/39093416-24e27484-4652-11e8-9eaa-96b610508d80.gif) | ![本地导入](https://user-images.githubusercontent.com/17924777/39093132-18904792-464d-11e8-9bda-4f30abec0504.gif)
+![Paging](https://user-images.githubusercontent.com/17924777/39093416-24e27484-4652-11e8-9eaa-96b610508d80.gif) | ![Import](https://user-images.githubusercontent.com/17924777/39093132-18904792-464d-11e8-9bda-4f30abec0504.gif)
 
-搜索贴吧 | 浏览帖子
+Tieba.baidu.com | Posts
 :-------------------------:|:-------------------------:
-![搜索贴吧](https://user-images.githubusercontent.com/17924777/39093389-d2d79c64-4651-11e8-9b19-07490ccbb44a.gif) | ![浏览帖子](https://user-images.githubusercontent.com/17924777/39093405-0108874c-4652-11e8-9e79-884a1f6961a9.gif)
+![Tieba.com](https://user-images.githubusercontent.com/17924777/39093389-d2d79c64-4651-11e8-9b19-07490ccbb44a.gif) | ![Posts](https://user-images.githubusercontent.com/17924777/39093405-0108874c-4652-11e8-9e79-884a1f6961a9.gif)
 
 ## Usage
 ```
@@ -53,11 +60,10 @@ Email: creatint@163.com
 
 QQ: 565864175
 
-编程交流群: [![编程技术交流](https://pub.idqqimg.com/wpa/images/group.png)](//shang.qq.com/wpa/qunwpa?idkey=b34e5d3956950dc053efdd7aef63ef75151c01cfff48a951c8fc53d6349b454a)
+QQ Group for Coding: [![](https://pub.idqqimg.com/wpa/images/group.png)](//shang.qq.com/wpa/qunwpa?idkey=b34e5d3956950dc053efdd7aef63ef75151c01cfff48a951c8fc53d6349b454a)
 
-二次元交流群: [![Yotaku](https://pub.idqqimg.com/wpa/images/group.png)](//shang.qq.com/wpa/qunwpa?idkey=2fea46b70c9a73fcbfedd08ee64ed9d6d8c554baa63dc2402082226675e825e7)
+QQ Group for ACGN: [![Yotaku](https://pub.idqqimg.com/wpa/images/group.png)](//shang.qq.com/wpa/qunwpa?idkey=2fea46b70c9a73fcbfedd08ee64ed9d6d8c554baa63dc2402082226675e825e7)
 
 ## License
-Light使用GPL-3.0开源许可证，查看[证书](https://github.com/creatint/light/blob/master/LICENSE)。
 
 Light is available under the GPL-3.0 license. See the [LICENSE](https://github.com/creatint/light/blob/master/LICENSE) file.
